@@ -16,10 +16,11 @@
 @{
 	
 	# Script module or binary module file associated with this manifest
-	ModuleToProcess = 'Qlik-NPrinting-CLI.psm1'
+	#ModuleToProcess = 'Qlik-NPrinting-CLI.psm1'
+	RootModule	       = 'Qlik-NPrinting-CLI.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '1.0.0.0'
+	ModuleVersion = '1.0.0.1'
 	
 	# ID used to uniquely identify this module
 	GUID = 'eca92804-c4ca-4aa8-9313-44d71005379d'
@@ -37,7 +38,7 @@
 	Description = 'Module description'
 	
 	# Minimum version of the Windows PowerShell engine required by this module
-	PowerShellVersion = '2.0'
+	PowerShellVersion = '4.0'
 	
 	# Name of the Windows PowerShell host required by this module
 	PowerShellHostName = ''
@@ -73,7 +74,7 @@
 	
 	# Modules to import as nested modules of the module specified in
 	# ModuleToProcess
-	NestedModules = @()
+	NestedModules = @("Work_IN_Progress\NPApps.psm1")
 	
 	# Functions to export from this module
 	FunctionsToExport = @(
@@ -95,7 +96,7 @@
 	VariablesToExport = '*'
 	
 	# Aliases to export from this module
-	AliasesToExport = '*' #For performance, list alias explicitly
+	AliasesToExport = '' #For performance, list alias explicitly
 	
 	# DSC class resources to export from this module.
 	#DSCResourcesToExport = ''
@@ -131,10 +132,3 @@
 		
 	} # End of PrivateData hashtable
 }
-
-
-
-
-
-
-
