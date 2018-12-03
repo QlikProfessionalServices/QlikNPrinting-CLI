@@ -116,10 +116,10 @@
 			# Tags = @()
 			
 			# A URL to the license for this module.
-			# LicenseUri = ''
+			# LicenseUri = 'https://raw.githubusercontent.com/Nillth/Qlik-NPrinting-CLI/master/LICENSE'
 			
 			# A URL to the main website for this project.
-			# ProjectUri = ''
+			# ProjectUri = 'https://github.com/Nillth/Qlik-NPrinting-CLI'
 			
 			# A URL to an icon representing this module.
 			# IconUri = ''
