@@ -16,8 +16,7 @@
 @{
 	
 	# Script module or binary module file associated with this manifest
-	#ModuleToProcess = 'Qlik-NPrinting-CLI.psm1'
-	RootModule	       = 'Qlik-NPrinting-CLI.psm1'
+	ModuleToProcess = 'Qlik-NPrinting-CLI.psm1'
 	
 	# Version number of this module.
 	ModuleVersion = '1.0.0.1'
@@ -74,7 +73,7 @@
 	
 	# Modules to import as nested modules of the module specified in
 	# ModuleToProcess
-	NestedModules = @("Work_IN_Progress\NPApps.psm1")
+	NestedModules = @()
 	
 	# Functions to export from this module
 	FunctionsToExport = @(
