@@ -1,9 +1,6 @@
 ﻿<#	
 	===========================================================================
-	 Created with: 	SAPIEN Technologies, Inc., PowerShell Studio 2018 v5.5.155
-	 Created on:   	2018-12-03 10:21 AM
-	 Created by:   	Marc Collins
-	 Organization: 	Qlik - Consulting
+	 Created by:   	Nillth
 	 Filename:     	Qlik-NPrinting-CLI.psd1
 	 -------------------------------------------------------------------------
 	 Module Manifest
@@ -19,7 +16,7 @@
 	ModuleToProcess = 'Qlik-NPrinting-CLI.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '1.0.0.1'
+	ModuleVersion = '1.0.0.2'
 	
 	# ID used to uniquely identify this module
 	GUID = 'eca92804-c4ca-4aa8-9313-44d71005379d'
@@ -84,8 +81,11 @@
 		'Get-NPRoles',
 		'Get-NPTasks',
 		'Get-NPUsers',
+		'Get-NPReports',
 		'Get-NPApps',
-		'Get-NPReports'
+		'Add-NPFilterField',
+		'New-NPFilter',
+		'Get-NPConnections'
 	) #For performance, list functions explicitly
 	
 	# Cmdlets to export from this module
