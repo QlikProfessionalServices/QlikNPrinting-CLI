@@ -74,23 +74,23 @@ Invoke-NPRequest -method Get -Path 'users/$IDUser'
 
 ##### Update a specific User
 ```
-$Data = @{
+$Data = @(
 UserName = "ChangeName"
-}
+)
 $DataJSON = $Data|ConvertTo-Json
 Invoke-NPRequest -method Put 'users/$IDUser' -Data $DataJSON
 ```
 
 ##### Create A New User
 ```
-$Data = @{
+$Data = @(
 password = "changeme"
 email = "changename@domain.com"
 enabled = $true
 UserName = "ChangeName"
 timezone = "Australia/Melbourne"
 Locale = "en"
-}
+)
 $DataJSON = $Data|ConvertTo-Json
 
 Invoke-NPRequest -method Post -Path "users" -Data $DataJSON
