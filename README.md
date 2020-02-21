@@ -1,5 +1,5 @@
 # Qlik-NPrinting-CLI
-[NPrinting API](https://help.qlik.com/en-US/nprinting/November2018/APIs/NP+API/index.html)
+[NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm)
 
 ## Authentication
 Simply using 'Get-NPSession' will assume that NPrinting is running on the current machine (where you are running the Script from)
