@@ -45,7 +45,7 @@ Get-NPFilters
 
 ## Do More
 If you need the ability to do more you can use `Invoke-NPRequest`
-The [NPrinting API](https://help.qlik.com/en-US/nprinting/November2018/APIs/NP+API/index.html) lists the avaliable APIs.
+The [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm) lists the avaliable APIs.
 
 e.g `Get /apps/{id}`
 
