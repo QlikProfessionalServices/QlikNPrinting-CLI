@@ -1,6 +1,9 @@
 ﻿<#	
 	===========================================================================
-	 Created by:   	Nillth
+	 Created with: 	SAPIEN Technologies, Inc., PowerShell Studio 2018 v5.5.155
+	 Created on:   	2018-12-03 10:21 AM
+	 Created by:   	Marc Collins
+	 Organization: 	Qlik - Consulting
 	 Filename:     	Qlik-NPrinting-CLI.psd1
 	 -------------------------------------------------------------------------
 	 Module Manifest
@@ -16,7 +19,7 @@
 	ModuleToProcess = 'Qlik-NPrinting-CLI.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '1.0.0.2'
+	ModuleVersion = '1.0.0.4'
 	
 	# ID used to uniquely identify this module
 	GUID = 'eca92804-c4ca-4aa8-9313-44d71005379d'
@@ -28,7 +31,7 @@
 	CompanyName = 'Qlik - Consulting'
 	
 	# Copyright statement for this module
-	Copyright = '(c) 2018. All rights reserved.'
+	Copyright = '(c) 2020. All rights reserved.'
 	
 	# Description of the functionality provided by this module
 	Description = 'Module description'
@@ -116,10 +119,10 @@
 			# Tags = @()
 			
 			# A URL to the license for this module.
-			# LicenseUri = 'https://raw.githubusercontent.com/Nillth/Qlik-NPrinting-CLI/master/LICENSE'
+			# LicenseUri = 'https://raw.githubusercontent.com/QlikProfessionalServices/Qlik-NPrinting-CLI/master/LICENSE'
 			
 			# A URL to the main website for this project.
-			# ProjectUri = 'https://github.com/Nillth/Qlik-NPrinting-CLI'
+			# ProjectUri = 'https://github.com/QlikProfessionalServices/Qlik-NPrinting-CLI'
 			
 			# A URL to an icon representing this module.
 			# IconUri = ''
