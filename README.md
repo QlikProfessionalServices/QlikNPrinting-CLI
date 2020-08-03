@@ -1,35 +1,43 @@
-# Qlik-NPrinting-CLI
+# QlikNPrinting-CLI
 [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm)
 
+## New in 1.0.0.5
+Get-NPSession renamed to Connect-NPrinting
+Connect-NPrinting now supports NPrinting Authenticaiton.
+
+
 ## Authentication
-Simply using 'Get-NPSession' will assume that NPrinting is running on the current machine (where you are running the Script from)
+Simply using 'Connect-NPrinting' will assume that NPrinting is running on the current machine (where you are running the Script from)
 It will attempt to connect to NPrinting with the Current Logged on users crededntials.
 It will use the Default Port and HTTPS for the connection.
 
-`Get-NPSession`
+`Connect-NPrinting`
 
 ###### Alternativly you can use the following substituting your values for the examples below
 ```
-Get-NPSession -Computer https://Server:9999
-Get-NPSession -Prefix https -Computer Server -Port 9999
-Get-NPSession -Computer https://Server -Port 9999
+Connect-NPrinting -Computer https://Server:9999
+Connect-NPrinting -Prefix https -Computer Server -Port 9999
+Connect-NPrinting -Computer https://Server -Port 9999
 ```
 
 ###### If the Server is using a Default Cert, Powershell May not trust it, if that is the case add `-TrustAllCerts`
 
-`Get-NPSession -TrustAllCerts`
+`Connect-NPrinting -TrustAllCerts`
 
 ###### if you need to use specific credentials to connect to the API's
+NTLM Authentication used by default
+or NPrinting (user@domain.com) can be selected
 
 ```
 $Creds = Get-Credential
-Get-NPSession -Credentials $Creds
+Connect-NPrinting -Credentials $Creds
+Connect-NPrinting -TrustAllCerts -Credentials $cred -AuthScheme NPrinting
 ```
 
 
 ###### Then putting it all together.
 
-`Get-NPSession -Credentials $Creds -TrustAllCerts -Computer https://server:9999`
+`Connect-NPrinting -Credentials $Creds -TrustAllCerts -Computer https://server:9999`
 
 ## Usage
 Once you have successfully established a authenticated NPSession. You can use any of the following module commands:
