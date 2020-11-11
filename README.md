@@ -1,9 +1,8 @@
 # QlikNPrinting-CLI
 [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm)
 
-## New in 1.0.0.5
-Get-NPSession renamed to Connect-NPrinting
-Connect-NPrinting now supports NPrinting Authenticaiton.
+## New in 1.0.0.6
+Fixed a bug that caused scripts to exist when a 404 was returned from the NPrinting Server. 
 
 
 ## Authentication
