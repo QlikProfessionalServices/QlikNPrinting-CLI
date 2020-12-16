@@ -18,7 +18,7 @@
 	ModuleToProcess = 'QlikNPrinting-CLI.psm1'
 	
 	# Version number of this module.
-	ModuleVersion = '1.0.0.6'
+	ModuleVersion = '1.0.0.8'
 	
 	# ID used to uniquely identify this module
 	GUID = 'eca92804-c4ca-4aa8-9313-44d71005379d'
@@ -112,19 +112,19 @@
 		PSData = @{
 			
 			# Tags applied to this module. These help with module discovery in online galleries.
-			# Tags = @()
+			Tags = @('Qlik', 'NPrinting', 'NPrintingAPI','API')
 			
 			# A URL to the license for this module.
-			# LicenseUri = 'https://raw.githubusercontent.com/QlikProfessionalServices/QlikNPrinting-CLI/master/LICENSE'
+			LicenseUri = 'https://raw.githubusercontent.com/QlikProfessionalServices/QlikNPrinting-CLI/master/LICENSE'
 			
 			# A URL to the main website for this project.
-			# ProjectUri = 'https://github.com/QlikProfessionalServices/QlikNPrinting-CLI'
+			ProjectUri = 'https://github.com/QlikProfessionalServices/QlikNPrinting-CLI'
 			
 			# A URL to an icon representing this module.
 			# IconUri = ''
 			
 			# ReleaseNotes of this module
-			# ReleaseNotes = ''
+			ReleaseNotes = 'https://raw.githubusercontent.com/QlikProfessionalServices/QlikNPrinting-CLI/master/README.md'
 			
 		} # End of PSData hashtable
 		
@@ -134,8 +134,8 @@
 # SIG # Begin signature block
 # MIIeggYJKoZIhvcNAQcCoIIeczCCHm8CAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDu+ykJQ/6ag3Vd
-# nGlKc5o+bKFstTGiotcd9pewaSANJ6CCGIwwggUwMIIEGKADAgECAhAECRgbX9W7
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCASk9K1NHIjVTLP
+# ZEAju0imoQU8MEZXww6L5NwClFPVk6CCGIwwggUwMIIEGKADAgECAhAECRgbX9W7
 # ZnVTQ7VvlVAIMA0GCSqGSIb3DQEBCwUAMGUxCzAJBgNVBAYTAlVTMRUwEwYDVQQK
 # EwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5jb20xJDAiBgNV
 # BAMTG0RpZ2lDZXJ0IEFzc3VyZWQgSUQgUm9vdCBDQTAeFw0xMzEwMjIxMjAwMDBa
@@ -272,27 +272,27 @@
 # Z25pbmcgQ0ECEAVFNrTiDqY894KJXUxQqqwwDQYJYIZIAWUDBAIBBQCggYQwGAYK
 # KwYBBAGCNwIBDDEKMAigAoAAoQKAADAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIB
 # BDAcBgorBgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQg
-# jQDJgMdtGPPoCbK+cYGIre/gxrnLOzERnQqGGoYpOjcwDQYJKoZIhvcNAQEBBQAE
-# ggIAQVzDpio3dKPt+gm/1c4e3qlDY4WR6XB9w4C3xP7wZyrv5BBZ8l2pvKefYE9d
-# 9oTVnucMGK3gvDgg+od4NuI30nLSy+9J5b8M74OdlLXlcMqZrm+EUIb/aaEKcueR
-# Wr326qwVdMZCG6ay3aw98LAK1wUhyN2Sq5/5c3NDhTaT/Lfr0ZU2mOB+umgqgiXo
-# sGSGIbTezm72uTv1FeSdpouR+L0uM6SuxYxJYtFAHCNPHmIVRIuHUSZh2Av4H9Yt
-# ejryK+E2sxa/AxdSwS1iaoZEN+En2rqm441Eox+CKMaXoRGx984J4XBaklNHHWGs
-# g8uI5EMnDfQmst5234/0naMBXkyzF2zlUETc+v7zOpc4HOjYckV0nN7CjtfIoy1q
-# bo5ebADYgDfPGZwPipVqAPQZBi7mbu/bLT/h30Eou1K8AYCnRBwnI/p8omjfc84N
-# LpL90BB8Ayp/9Qf/ZMXes4x63OmUfb+8coU5v6UNEABukpVO4iHPbWsAdfeXeQce
-# jCKk19NEIc97hu646P6L7Y4pV7DedQrs2Pkq3hvD0gcVYey5QHykBMYVot8wvD5O
-# 4ozRfblJKACQjvNLS3+kOsHDDBo9DvCTJ6Lvboj+993kN9XE2lVaKhsoAtGlPJ53
-# W/P/8E/n/TwBcZH3rk/GLKPNpbV8rR6WGdOMFVGoiX+yOFShggIPMIICCwYJKoZI
+# UPbeuUtgTNKmu2D1IksYnwldjzYwD9F8K5de3uPZ+PQwDQYJKoZIhvcNAQEBBQAE
+# ggIAViB4OzLypPKO9ix1fujNUOhVBPkmFG5kvQOeTeFqot7fy/uJayactIF149Mg
+# OO6BWmd5F0izx+loU4BRGHfUMH4LOwoEJCENxtVChX+khPzfPx12aaDUMJgP65Tm
+# kHXee0lx9n31N555etQ8XKWtq2u9cBonR2+U3+F1xG52hCU6uCzg6Lfim5Y0xYIS
+# n1diS76N0lReDa5GhrnX1edeM0Odpx3gF+3VEbEPkF2otLKxpCBzvj0LMZwnCVNB
+# CcWfFuVoKPwOe7d/hIijumNH3i+9cZvmf6LlJ5NBbH9a9/w1fkdnPZq9EylmiuG/
+# vwjPmCdfxOy1dEjFPQop+40iUbwY2DHPomkfZhR4DbLmJHYLvzjzb+SQJmTvKmU+
+# b7AlRm2a9+w0pKjy6n7et1IG2PQN7VSXip7BwSSTI+IV/ZLijNmoqLmMpd5JTwrw
+# UUVEVcGVTtBW1Ne/MS0tinTLqzHK2PZ6T68cwOzhRkuk3afsoVYxbkXBUlUnoWeD
+# gQtkLg93re0xVXDgtOep8iZv4f7/c7w7UHSlKlN8SzMDPTqc5EyxiWXvwDgnRQY4
+# ctnNLIorFNFbd/PRucm7vEq4gpcF615Oraio/b0vS4yvotI5q0KRwUBG90S2rBYF
+# ZarzKklQW4KKEobBQYvJeWj4+omZr34wQlqdCCIn/CIZbuyhggIPMIICCwYJKoZI
 # hvcNAQkGMYIB/DCCAfgCAQEwdjBiMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGln
 # aUNlcnQgSW5jMRkwFwYDVQQLExB3d3cuZGlnaWNlcnQuY29tMSEwHwYDVQQDExhE
 # aWdpQ2VydCBBc3N1cmVkIElEIENBLTECEAMBmgI6/1ixa9bV6uYX8GYwCQYFKw4D
 # AhoFAKBdMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8X
-# DTIwMTExMDAyMzEyMlowIwYJKoZIhvcNAQkEMRYEFNQqtFQxi+NwSN8zc7uNmQTP
-# URlOMA0GCSqGSIb3DQEBAQUABIIBAHumIIREeIgMZWd/iiensRlBeYuHTzIcP3x5
-# zl5RWGas59ppA0wTEkLy9rAQ/TS6SF5l9kRfqBmuW6qI7irHzLIRU/gHStiZavDF
-# XDcIu9acQKdelA/PLj88be0ZW7jWlgiyeD8DhQtPTjqkgM2K3HzVSqo9V58tTZSx
-# ZY8r+/nCG8+L4d+oqvk0yrEp3oeYqlRn6QdPNVX+EEtP75awb0jG1RphgFUXQLpK
-# UeHAK5MlLr2eloi9BBuWTR5jcWXmiUI0ogQVQCG0zDVVEzhL4vWi6FGQVxdFM5JM
-# +u1n1wt+s7ABTO94NLya+Xjd1O+EVJjXSrUlXyDP/T+q7XF5qsQ=
+# DTIwMTIxNjIzMDk1NVowIwYJKoZIhvcNAQkEMRYEFNuWCTRiTjrMx1sKu2LtFzWw
+# 4PTCMA0GCSqGSIb3DQEBAQUABIIBABgvq+Mkx8N5v14qMOWXuEmL+Xs3/ujpOP3g
+# UZR+uHp2c9oIhV8AZuwEZsYbhr1JQP4FEzqQbOpxjPDSAE3RPnQdSg24SqRHi0Eu
+# HCFB5JTm4qnNcxPzh6i80rSavO58CYXDv9e2T8In1S7mZMCwnVUJcM69hanA0t2y
+# LGtBw4LHPLbo88fez65Z+5S890/QpBe08m+XWQO1PsqNKnyNyPBt/1vgBdAg1Kn+
+# 4w9I9Hp4DCUofIf4kNpcPOJ8uCSz4Eu3O73fumXWlAuo+WQfRlDY0bWeshVBIPKd
+# I+wKNvTXQ8fMD9Z8+ZpOX/dyDoCH2QD3ht0azuCEmn4/3tcrrzA=
 # SIG # End signature block

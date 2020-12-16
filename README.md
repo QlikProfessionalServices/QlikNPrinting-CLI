@@ -1,9 +1,12 @@
 # QlikNPrinting-CLI
 [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm)
 
-## New in 1.0.0.6
-Fixed a bug that caused scripts to exist when a 404 was returned from the NPrinting Server. 
+## New in 1.0.0.8
+Updated and alingned with PowerShell Gallery
 
+Function: 
+- **Invoke-NPRequest**:
+  - Added parameters with default values for required -NPE query path paramaters
 
 ## Authentication
 Simply using 'Connect-NPrinting' will assume that NPrinting is running on the current machine (where you are running the Script from)
