@@ -1,6 +1,9 @@
 # QlikNPrinting-CLI
 [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm)
 
+## New in 1.0.0.10
+Bug Fix: Added missing parameter 
+
 ## New in 1.0.0.9
 Bug Fix: Json Depth defaults to 5
 
