@@ -1,23 +1,57 @@
 # QlikNPrinting-CLI
 [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm)
 
+## New in 1.0.0.9
+Bug Fix: Json Depth defaults to 5
+
+Minor improvements 
+
 ## New in 1.0.0.8
-Updated and alingned with PowerShell Gallery
+Updated and aligned with PowerShell Gallery
 
 Function: 
 - **Invoke-NPRequest**:
-  - Added parameters with default values for required -NPE query path paramaters
+  - Added parameters with default values for required -NPE query path parameters
+
+## Installation
+### PowerShell Gallery
+```PowerShell
+Get-PackageProvider -Name NuGet -ForceBootstrap
+
+# Install for all users, requires admin rights
+Install-Module QlikNPrinting-CLI
+
+# Install for current user
+Install-Module QlikNPrinting-CLI -Scope CurrentUser
+```
+
+```PowerShell
+# Once Installed you can import the Module
+Import-Module QlikNPrinting-CLI
+```
+
+### Manually
+
+To manually install the module, download the latest release from [Release](https://github.com/QlikProfessionalServices/QlikNPrinting-CLI/releases/latest)
+
+Extract the Downloaded file into the appropriate module directory, 
+
+You can check the configured paths by checking the output of the command `$env:PSModulePath`
+
+Default locations are
+- System Module `C:\Program Files\WindowsPowerShell\Modules`
+- User Module `C:\users\<username>\Documents\WindowsPowerShell\Modules`
 
 ## Authentication
 Simply using 'Connect-NPrinting' will assume that NPrinting is running on the current machine (where you are running the Script from)
-It will attempt to connect to NPrinting with the Current Logged on users crededntials.
+It will attempt to connect to NPrinting with the Current Logged on users credentials.
 It will use the Default Port and HTTPS for the connection.
 
 ```PowerShell
 Connect-NPrinting
 ```
 
-###### Alternativly you can use the following substituting your values for the examples below
+###### Alternatively you can use the following substituting your values for the examples below
 ```PowerShell
 Connect-NPrinting -Computer https://Server:9999
 Connect-NPrinting -Prefix https -Computer Server -Port 9999
@@ -37,7 +71,7 @@ or NPrinting (user@domain.com) can be selected
 ```PowerShell
 $Creds = Get-Credential
 Connect-NPrinting -Credentials $Creds
-Connect-NPrinting -TrustAllCerts -Credentials $cred -AuthScheme NPrinting
+Connect-NPrinting -TrustAllCerts -Credentials $Creds -AuthScheme NPrinting
 ```
 
 
@@ -61,7 +95,7 @@ Get-NPFilters
 
 ## Do More
 If you need the ability to do more you can use `Invoke-NPRequest`
-The [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm) lists the avaliable APIs.
+The [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm) lists the available APIs.
 
 e.g 
 ```PowerShell 
@@ -92,7 +126,7 @@ $IDUser = "033eeaf0-956e-41fa-83be-f7876479844a"
 Invoke-NPRequest -method Get -Path 'users/$IDUser'
 ```
 
-##### Delete Spcific User
+##### Delete Specific User
 ```PowerShell
 Invoke-NPRequest -method Delete -Path 'users/$IDUser'
 ```
