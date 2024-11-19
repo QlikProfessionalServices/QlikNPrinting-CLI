@@ -185,7 +185,8 @@ join-path $_.Directory.name $_.Name
 }
 
 $ModuleDIR = $Null
-[System.io.DirectoryInfo]$ModuleDir = "$($BuildRoot.FullName)$($DirSeparator)$ModuleName"
+
+[System.io.DirectoryInfo]$ModuleDir = Join-Path -Path $BuildRoot -ChildPath $ModuleName |Join-Path -ChildPath $ModuleVersion
 $ModuleDIR.Refresh()
 if ($ModuleDIR.Exists) {
 	Write-Host "Clearing Existing DIR: $($ModuleDIR.FullName)"
@@ -228,8 +229,7 @@ foreach ($MD in $MDs) {
 	}
 }
 
-$BinPath = "$($BuildRoot.FullName)$($DirSeparator)src$($DirSeparator)$($BinDIR)"
-
+$BinPath = Join-Path -Path $BuildRoot -ChildPath 'src' |Join-Path -ChildPath $BinDIR
 if (-not [string]::IsNullOrEmpty($BinPath)) {
 	$Directories = Get-ChildItem $BinPath -Recurse -Directory
 	$Modules = $Directories | Where-Object {
