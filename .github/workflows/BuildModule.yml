@@ -6,60 +6,101 @@ name: Module Build
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches-ignore: [ 'main', '**-alpha', '**-dev' ]
+    branches-ignore: [ '**-alpha', '**-dev' ]
     paths-ignore:
       - '.github/workflows/**'
       - 'docs/**'
   pull_request:
     branches: [ "main" ]
-    paths-ignore:
-      - '.github/workflows/**'
-      - 'docs/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   build-module:
     name: Build Module Manifest
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Build the PowerShell Module
         id: pwsh-build
         shell: pwsh
-        env:
-            GH_TOKEN: ${{ secrets.API_TOKEN }}
         run: |
           Get-ChildItem -Recurse -Include "BuildModule.ps1"|%{. $_.FullName}
-      - name: Build the Readme
-        uses: baileyjm02/markdown-to-pdf@v1
+          $TitlePageGraphic = "https://raw.githubusercontent.com/Nillth/Qlik_ReadMe_Assets/main/docs/images/TitlePage.png"
+          $Logo = "https://raw.githubusercontent.com/Nillth/Qlik_ReadMe_Assets/main/docs/images/Qlik-Logo_RGB.png"
+          $CSS = "https://raw.githubusercontent.com/Nillth/Qlik_ReadMe_Assets/main/docs/theme/qlik.css"
+          [System.IO.DirectoryInfo]$Temp = "./TempAssets"
+          $Temp.Create()
+          $TempRelative = Resolve-Path -Relative $Temp
+          $LTitlePageGraphic = "$($TempRelative)/$($($TitlePageGraphic -split("/"))[-1])"
+          $LLogo = "$($TempRelative)/$($($Logo -split("/"))[-1])"
+          $LCSS = "$($TempRelative)/$($($CSS -split("/"))[-1])"
+          try{
+          Invoke-RestMethod $TitlePageGraphic -OutFile $LTitlePageGraphic
+          Invoke-RestMethod $Logo -OutFile $LLogo
+          Invoke-RestMethod $CSS -OutFile $LCSS
+          }catch{}
+          "title=${{ github.event.repository.name }} - ReadMe" >> $ENV:GITHUB_OUTPUT
+          "author=${{github.server_url}}/${{github.repository}}" >> $ENV:GITHUB_OUTPUT
+          "readmeZip=${{ github.event.repository.name }}-Readme" >> $ENV:GITHUB_OUTPUT
+          "TitlePageGraphic=$($LTitlePageGraphic)" >> $ENV:GITHUB_OUTPUT
+          "Logo=$($LLogo)" >> $ENV:GITHUB_OUTPUT
+          "CSS=$($LCSS)" >> $ENV:GITHUB_OUTPUT
+          $MDFiles = Get-ChildItem ./src -Recurse -Include "*.md"|?{-not $($_.Directory.FullName -like "*bin*")}
+          $MDFileList = $($MDFiles|%{$(Resolve-Path -Relative $_.FullName)})-join " "
+          "MDFileList=$($MDFileList)" >> $ENV:GITHUB_OUTPUT
+          "### Local Files" >> $env:GITHUB_STEP_SUMMARY
+          "#### TitlePageGraphic ``$($LTitlePageGraphic)``" >> $env:GITHUB_STEP_SUMMARY
+          "#### Logo ``$($LLogo)``" >> $env:GITHUB_STEP_SUMMARY
+          "#### CSS ``$($LCSS)``" >> $env:GITHUB_STEP_SUMMARY
+          "#### MDFileList ``$($MDFileList)``" >> $env:GITHUB_STEP_SUMMARY
+      - name: Generate ReadMe.html
+        uses: docker://pandoc/extra:latest
         with:
-          input_dir: ${{ steps.pwsh-build.outputs.ModuleDir }}
-          output_dir: ${{ steps.pwsh-build.outputs.ModuleDir }}
-          # Default is true, can set to false to only get PDF files
-          table_of_contents: value
-          build_html: true
-          build_pdf: true
+          args: >-  # allows you to break string into multiple lines
+            --standalone
+            --embed-resources
+            --css "${{ steps.pwsh-build.outputs.CSS }}"
+            --output="${{ steps.pwsh-build.outputs.ModuleDirRelative }}/ReadMe.html"
+            --metadata title="${{ steps.pwsh-build.outputs.title }}"
+            --metadata author="${{ steps.pwsh-build.outputs.author }}"
+            ${{ steps.pwsh-build.outputs.MDFileList }}
+      - name: Generate README.pdf
+        uses: docker://pandoc/extra:latest
+        with:
+          args: >-  # allows you to break string into multiple lines 
+            --standalone
+            --embed-resources
+            --template /.pandoc/templates/eisvogel.latex
+            --listings
+            --metadata title="${{ steps.pwsh-build.outputs.title }}"
+            --metadata author="Qlik Customer Success"
+            --output="${{ steps.pwsh-build.outputs.ModuleDirRelative }}/README.pdf"
+            -V lang=en-GB 
+            -V titlepage 
+            -V titlepage-text-color=009845 
+            -V titlepage-logo="${{ steps.pwsh-build.outputs.Logo }}"
+            -V titlepage-background="${{ steps.pwsh-build.outputs.TitlePageGraphic }}"
+            ${{ steps.pwsh-build.outputs.MDFileList }}
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         id: artifact
+        if: success() || failure()
         with:
           name: ${{ steps.pwsh-build.outputs.ModuleName }}
           path: ${{ steps.pwsh-build.outputs.ModuleDir }}
       - name: Release
-        uses: softprops/action-gh-release@v1
-        if: ${{ github.ref == 'refs/heads/main' }}
-        with:
-          token: ${{ secrets.API_TOKEN }}
-          name: ${{ steps.pwsh-build.outputs.ModuleName }} - ${{ steps.pwsh-build.outputs.Version }}
-          tag_name: ${{ steps.pwsh-build.outputs.Version }}
-          generate_release_notes: true
-          draft: true
-          files: |
-            ${{ steps.pwsh-build.outputs.ModuleZip }}
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          gh release create --draft --generate-notes --title "${{ steps.pwsh-build.outputs.ModuleName }} - ${{ steps.pwsh-build.outputs.Version }}" ${{ steps.pwsh-build.outputs.Version }} ${{ steps.pwsh-build.outputs.ModuleZip }}
