@@ -1,0 +1,32 @@
+name: Publish Module
+
+on:
+  release:
+    types: [published]
+
+  workflow_dispatch:
+
+jobs:
+  notification:
+    runs-on: ubuntu-latest
+    env:
+       REQUIRED_TOKEN: ${{ secrets.PWSHGALLERY_TOKEN != '' }}
+    
+    steps:
+      - name: Download release asset
+        if: ${{ env.REQUIRED_TOKEN == 'true' }}
+        id: download-release-asset
+        uses: robinraju/release-downloader@v1.5
+        with:
+          latest: true
+          #zipBall: true
+          token: ${{ secrets.API_TOKEN }}
+      - name: Release the PowerShell Module
+        if: ${{ env.REQUIRED_TOKEN == 'true' }}
+        id: pwsh-release
+        shell: pwsh
+        env:
+            PWSHGALLERY_TOKEN: ${{ secrets.PWSHGALLERY_TOKEN }}
+        run: |
+          Get-ChildItem -File -Filter "*.zip"|Expand-Archive
+          Get-ChildItem -File -Filter "*.psd1" -Recurse |%{Publish-Module -Path $_.Directory.FullName -NuGetApiKey $ENV:PWSHGALLERY_TOKEN}

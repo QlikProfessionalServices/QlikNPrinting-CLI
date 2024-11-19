@@ -1,0 +1,65 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Module Build
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches-ignore: [ 'main', '**-alpha', '**-dev' ]
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'docs/**'
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'docs/**'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build-module:
+    name: Build Module Manifest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Build the PowerShell Module
+        id: pwsh-build
+        shell: pwsh
+        env:
+            GH_TOKEN: ${{ secrets.API_TOKEN }}
+        run: |
+          Get-ChildItem -Recurse -Include "BuildModule.ps1"|%{. $_.FullName}
+      - name: Build the Readme
+        uses: baileyjm02/markdown-to-pdf@v1
+        with:
+          input_dir: ${{ steps.pwsh-build.outputs.ModuleDir }}
+          output_dir: ${{ steps.pwsh-build.outputs.ModuleDir }}
+          # Default is true, can set to false to only get PDF files
+          table_of_contents: value
+          build_html: true
+          build_pdf: true
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        id: artifact
+        with:
+          name: ${{ steps.pwsh-build.outputs.ModuleName }}
+          path: ${{ steps.pwsh-build.outputs.ModuleDir }}
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: ${{ github.ref == 'refs/heads/main' }}
+        with:
+          token: ${{ secrets.API_TOKEN }}
+          name: ${{ steps.pwsh-build.outputs.ModuleName }} - ${{ steps.pwsh-build.outputs.Version }}
+          tag_name: ${{ steps.pwsh-build.outputs.Version }}
+          generate_release_notes: true
+          draft: true
+          files: |
+            ${{ steps.pwsh-build.outputs.ModuleZip }}

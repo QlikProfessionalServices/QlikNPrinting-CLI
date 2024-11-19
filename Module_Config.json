@@ -1,0 +1,22 @@
+﻿{
+    "RepositoryURI": "https://github.com/QlikProfessionalServices/QlikNPrinting-CLI",
+    "ModuleName": "QlikNPrinting-CLI",
+    "ModuleManifest": {
+        "Author": "Marc Collins",
+        "CompanyName": "Qlik - Customer Success",
+        "Copyright": null,
+        "Description": "The Qlik NPrinting CLI is a PowerShell module designed to interact with and manage Qlik NPrinting environments programmatically",
+        "DotNetFrameworkVersion": null,
+        "FileList": null,
+        "FunctionsToExport": null,
+        "Guid": "eca92804-c4ca-4aa8-9313-44d71005379d",
+        "HelpInfoUri": null,
+        "LicenseUri": null,
+        "ModuleVersion": "1.2",
+        "PrivateData": null,
+        "ProjectUri": null,
+        "ReleaseNotes": null,
+        "Tags": null
+    },
+    "AllowDynamicContent":  true
+}
