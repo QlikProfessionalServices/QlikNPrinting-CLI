@@ -3,7 +3,6 @@ $DynamicLoading = @'
 [System.IO.DirectoryInfo]$publicFunctionsPath = Join-Path $modulePath -ChildPath 'Public'
 [System.IO.DirectoryInfo]$privateFunctionsPath = Join-Path $modulePath -ChildPath 'Private'
 [System.IO.DirectoryInfo]$classesPath = Join-Path $modulePath -ChildPath 'Classes'
-Write-Warning "$PSScriptRoot"
 $aliases = @()
 [regex]$FunctionName = [regex]::new('(?<=function )([\w]+-[\w]+)(?>[\s]+\{)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
@@ -18,9 +17,9 @@ if ($publicFunctionsPath.Exists) {
             $alias = Get-Alias -Definition $function -ErrorAction SilentlyContinue
             if ($alias) {
                 $aliases += $alias
-                Export-ModuleMember -Function $function -Alias $alias -Verbose
+                Export-ModuleMember -Function $function -Alias $alias
             } else {
-                Export-ModuleMember -Function "$($function)" -Verbose
+                Export-ModuleMember -Function "$($function)"
             }
         }
     }
