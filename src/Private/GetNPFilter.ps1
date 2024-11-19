@@ -8,6 +8,7 @@ function GetNPFilter {
         [string]$Value,
 
         [Parameter(Mandatory = $true, HelpMessage = "The existing filter string.")]
+        [AllowEmptyString()]
         [string]$Filter
     )
 
@@ -15,6 +16,8 @@ function GetNPFilter {
     if ($null -ne $Property -and $null -ne $Value) {
         # Replace wildcard character `*` with `%`
         $Value = $Value -replace '\*', '%'
+        # URI encode the value
+        $Value = [System.Web.HttpUtility]::UrlEncode($Value)
 
         # Determine the query separator based on the current filter
         $QuerySeparator = if ($Filter.StartsWith('?')) { '&' } else { '?' }

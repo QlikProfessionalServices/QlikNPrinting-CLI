@@ -53,6 +53,7 @@
 
 #>
 function Invoke-NPRequest {
+    [CmdletBinding(DefaultParameterSetName = 'Default')]
     param (
         [Parameter(Mandatory = $true, Position = 0)]
         [string]$Path,
@@ -93,6 +94,7 @@ function Invoke-NPRequest {
     if (-not $NPEnv) {
         Write-Warning 'Attempting to establish Default connection'
         Connect-NPrinting
+        $NPEnv = $script:NPEnv
     }
 
     # Build query parameters

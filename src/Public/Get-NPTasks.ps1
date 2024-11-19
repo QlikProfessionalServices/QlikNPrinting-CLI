@@ -13,8 +13,23 @@
 .PARAMETER Name
     Specifies the name of the task to filter the results.
 
+.PARAMETER appId
+    Specifies the ID of the app to filter the tasks.
+
+.PARAMETER type
+    Specifies the type of the task to filter the results.
+
 .PARAMETER Executions
     Specifies whether to include execution details for each task.
+
+.PARAMETER offset
+    Specifies the number of tasks to skip before starting to return results.
+
+.PARAMETER limit
+    Specifies the maximum number of tasks to retrieve.
+
+.PARAMETER sort
+    Specifies the field by which to sort the results.
 
 .EXAMPLE
     Get-NPTasks
@@ -36,6 +51,16 @@
 
     This example retrieves all NPrinting tasks and includes execution details for each task.
 
+.EXAMPLE
+    Get-NPTasks -appId "12345"
+
+    This example retrieves all NPrinting tasks for the specified app ID.
+
+.EXAMPLE
+    Get-NPTasks -limit 10 -offset 5
+
+    This example retrieves a maximum of 10 NPrinting tasks, skipping the first 5.
+
 .NOTES
     For more information, visit the NPrinting API documentation:
     https://help.qlik.com/en-US/nprinting/February2024/APIs/NP+API/index.html?page=60
@@ -44,30 +69,59 @@
     https://help.qlik.com/en-US/nprinting/February2024/APIs/NP+API/index.html?page=60
 #>
 function Get-NPTasks {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Default')]
     param (
-        [Parameter(HelpMessage = "Specifies the ID of the task to retrieve.")]
+        [Parameter(ParameterSetName = 'ByID', HelpMessage = 'Specifies the ID of the task to retrieve.', Mandatory = $true)]
         [string]$ID,
-        [Parameter(HelpMessage = "Specifies the name of the task to filter the results.")]
+
+        [Parameter(ParameterSetName = 'Default', HelpMessage = 'Specifies the name of the task to filter the results.')]
         [string]$Name,
-        [Parameter(HelpMessage = "Specifies whether to include execution details for each task.")]
-        [switch]$Executions
+
+        [Parameter(ParameterSetName = 'Default', HelpMessage = 'Specifies the ID of the app to filter the tasks.')]
+        [string]$appId,
+
+        [Parameter(ParameterSetName = 'Default', HelpMessage = 'Specifies the type of the task to filter the results.')]
+        [string]$type,
+
+        [Parameter(ParameterSetName = 'Default', HelpMessage = 'Specifies whether to include execution details for each task.')]
+        [Parameter(ParameterSetName = 'ByID', HelpMessage = 'Specifies whether to include execution details for each task.')]
+        [switch]$Executions,
+
+        [Parameter(ParameterSetName = 'Default', HelpMessage = 'Specifies the number of tasks to skip before starting to return results.')]
+        [int32]$offset,
+
+        [Parameter(ParameterSetName = 'Default', HelpMessage = 'Specifies the maximum number of tasks to retrieve.')]
+        [int32]$limit
     )
 
     try {
         # Construct the base path
         $BasePath = 'tasks'
-        $Path = if ($ID) { "$BasePath/$ID" } else { $BasePath }
-
-        # Add filter by name if specified
-        if ($Name) {
-            $Path = "$Path?filter=name eq '$Name'"
+        if ($ID) { 
+            $APIPath = "$BasePath/$ID" 
+        } else {
+            $Filter = ''
+            if ($PSBoundParameters.ContainsKey('appId')) {
+                $Filter = GetNPFilter -Filter $Filter -Property 'appId' -Value $appId
+            }
+            if ($PSBoundParameters.ContainsKey('Name')) {
+                $Filter = GetNPFilter -Filter $Filter -Property 'name' -Value $Name
+            }
+            if ($PSBoundParameters.ContainsKey('type')) {
+                $Filter = GetNPFilter -Filter $Filter -Property 'type' -Value $type
+            }
+            if ($PSBoundParameters.ContainsKey('offset')) {
+                $Filter = GetNPFilter -Filter $Filter -Property 'offset' -Value $offset.ToString()
+            }
+            if ($PSBoundParameters.ContainsKey('limit')) {
+                $Filter = GetNPFilter -Filter $Filter -Property 'limit' -Value $limit.ToString()
+            }
+            $APIPath = "$BasePath$Filter"
         }
-
-        Write-Verbose "Request Path: $Path"
+        Write-Verbose "Request Path: $APIPath"
 
         # Fetch tasks from the API
-        $NPTasks = Invoke-NPRequest -Path $Path -method Get
+        $NPTasks = Invoke-NPRequest -Path $APIPath -method Get
 
         # Include execution details if requested
         if ($Executions) {
