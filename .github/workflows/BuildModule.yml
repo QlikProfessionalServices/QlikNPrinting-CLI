@@ -8,7 +8,7 @@ on:
   push:
     branches-ignore: [ '**-alpha', '**-dev' ]
     paths-ignore:
-      - '.github/workflows/**'
+      # - '.github/workflows/**'
       - 'docs/**'
   pull_request:
     branches: [ "main" ]
