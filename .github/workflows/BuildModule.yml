@@ -55,7 +55,7 @@ jobs:
           "TitlePageGraphic=$($LTitlePageGraphic)" >> $ENV:GITHUB_OUTPUT
           "Logo=$($LLogo)" >> $ENV:GITHUB_OUTPUT
           "CSS=$($LCSS)" >> $ENV:GITHUB_OUTPUT
-          $MDFiles = Get-ChildItem ./src -Recurse -Include "*.md"|?{-not $($_.Directory.FullName -like "*bin*")}
+          $MDFiles = Get-ChildItem ./ -Recurse -Include "*.md"|?{-not $($_.Directory.FullName -like "*bin*")}
           $MDFileList = $($MDFiles|%{$(Resolve-Path -Relative $_.FullName)})-join " "
           "MDFileList=$($MDFileList)" >> $ENV:GITHUB_OUTPUT
           "### Local Files" >> $env:GITHUB_STEP_SUMMARY
