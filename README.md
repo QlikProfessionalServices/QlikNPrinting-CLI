@@ -1,6 +1,30 @@
 # QlikNPrinting-CLI
 [NPrinting API](https://help.qlik.com/en-US/nprinting/csh/Content/NPrinting/Extending/NPrinting-APIs-Reference-Redirect.htm)
 
+## New in 1.2
+- Restructured Module Layout:
+
+The module structure has been reorganized to follow the standard template process, improving maintainability, consistency, and alignment with best practices.
+Files and directories have been logically arranged for better readability and ease of access.
+Enhanced Standardization:
+
+Incorporated a standardized naming convention for scripts, functions, and other assets.
+Updated the module manifest to reflect the new structure and ensure compatibility with future template updates.
+
+- Improved Build and Deployment Workflow:
+
+Added or refined build scripts to automate module packaging and deployment.
+Enhanced integration with CI/CD pipelines to streamline testing and deployment processes.
+
+- Codebase Clean-up:
+
+Removed deprecated or redundant code to reduce clutter and enhance performance.
+Refactored functions for better readability and efficiency.
+Documentation Update:
+
+Updated module documentation to reflect the new structure, making it easier for users to understand and contribute.
+Added examples and usage notes for key functions to improve the user experience.
+
 ## New in 1.0.0.10
 Bug Fix: Added missing parameter 
 
