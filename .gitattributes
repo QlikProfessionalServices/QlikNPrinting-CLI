@@ -1,0 +1,11 @@
+# Default: let git normalize text line endings in the repo.
+* text=auto
+
+# PowerShell files are Authenticode-signed. Pin them to CRLF so the exact signed
+# bytes round-trip through checkout/clone and signatures stay valid.
+*.ps1  text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+
+# Never normalize credential exports (also git-ignored).
+*.creds binary

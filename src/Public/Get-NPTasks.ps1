@@ -1,35 +1,57 @@
 <#
-	===========================================================================
-	 Module Name: QlikNPrinting-CLI
-	===========================================================================
-	 Qlik NPrinting CLI - PowerShell module to work with NPrinting.
-	 The function "Invoke-NPRequest" can be used to access all the NPrinting APIs.
-
-	 Module loader: dot-sources every function under src/Private and src/Public at
-	 import time, then exports the public functions. To add a function, drop a
-	 .ps1 into the matching folder - no build step required.
+.SYNOPSIS
+	Gets the Tasks defined in NPrinting and caches them in $script:NPTasks.
+.PARAMETER ID
+	Id of a specific task to get.
+.PARAMETER Name
+	Name to filter the returned tasks on (supports the * wildcard).
+.PARAMETER Executions
+	Also retrieve the execution history for each task.
+.PARAMETER Update
+	Refresh the internal cache only, without emitting the result.
 #>
+function Get-NPTasks {
+	[CmdletBinding()]
+	param(
+		$ID,
 
-$srcRoot = Join-Path $PSScriptRoot 'src'
-$private = @(Get-ChildItem -Path (Join-Path $srcRoot 'Private') -Filter '*.ps1' -ErrorAction SilentlyContinue)
-$public = @(Get-ChildItem -Path (Join-Path $srcRoot 'Public') -Filter '*.ps1' -ErrorAction SilentlyContinue)
+		[string]$Name,
 
-foreach ($file in @($private + $public)) {
-	try {
-		. $file.FullName
+		[switch]$Executions,
+
+		[Parameter(DontShow)]
+		[switch]$Update
+	)
+
+	$basePath = 'tasks'
+	$path = if ($null -ne $ID) { "$basePath/$ID" } else { $basePath }
+	Write-Verbose $path
+
+	$script:NPTasks = Invoke-NPRequest -Path $path -Method Get
+
+	$tasks = $script:NPTasks
+	if ($PSBoundParameters.ContainsKey('Name')) {
+		$tasks = $tasks | Where-Object { $_.name -like $Name }
 	}
-	catch {
-		Write-Error "Failed to import function $($file.FullName): $_"
+
+	if ($Executions.IsPresent) {
+		$tasks | ForEach-Object {
+			$executionPath = "tasks/$($_.id)/Executions"
+			$taskExecutions = Invoke-NPRequest -Path $executionPath -Method Get
+			Add-Member -InputObject $_ -MemberType NoteProperty -Name 'Executions' -Value $taskExecutions -Force
+		}
+	}
+
+	if (-not $Update.IsPresent) {
+		$tasks
 	}
 }
 
-Export-ModuleMember -Function $public.BaseName
-
 # SIG # Begin signature block
-# MIIfdAYJKoZIhvcNAQcCoIIfZTCCH2ECAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIIfdQYJKoZIhvcNAQcCoIIfZjCCH2ICAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDiXAbxXvv6hulE
-# 0McpEE/uT6K+K0NV8Wk3L6de5E/Ov6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCbAzZxHtKitDo1
+# 14wnrgKYmkxbUqgAK6bDHUx5rKcfp6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
 # /xLZmv82guWnMAoGCCqGSM49BAMDMHwxCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVU
 # ZXhhczEQMA4GA1UEBwwHSG91c3RvbjEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9u
 # MTEwLwYDVQQDDChTU0wuY29tIFJvb3QgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkg
@@ -166,32 +188,32 @@ Export-ModuleMember -Function $public.BaseName
 # MkpY+Rfl53oOEN4yTvtwCYP+VDuZrktc7NacoTVxZnKGkv8a1akckdOwQZC+i8Ay
 # 1VyzMAX/Tb4+r3c65B7cpAtq3OoUijXUJgvZxci6TX78smL2TYy2tWn+8G4krnXv
 # y2ELR2XYnKEOS4MVmrSCsjM5nxSrghE10VDXQbEfa93lhikfFoIuINKzWDLqvu8Z
-# ucmxEufxpHjNnnRVXX/Zv5KQq8pu/MQoOz6DC74n5+O5bSwvT5sgMYIFDTCCBQkC
+# ucmxEufxpHjNnnRVXX/Zv5KQq8pu/MQoOz6DC74n5+O5bSwvT5sgMYIFDjCCBQoC
 # AQEwgYwweDELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVRleGFzMRAwDgYDVQQHDAdI
 # b3VzdG9uMREwDwYDVQQKDAhTU0wgQ29ycDE0MDIGA1UEAwwrU1NMLmNvbSBDb2Rl
 # IFNpZ25pbmcgSW50ZXJtZWRpYXRlIENBIEVDQyBSMgIQZUv1paC174CCCE9ugRr/
 # AjANBglghkgBZQMEAgEFAKBqMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDB3fE4
-# NDeRRr9uOp44THa5UvAE47tYDZmUvGsOsLuWlDAKBggqhkjOPQQDAgRmMGQCMGzW
-# 5aqSaU5StsBzwITPFE2uX5u7JCCz1Eygd2x66Yp/BdhAFhi4RMpN7AvxZyQ50gIw
-# c5bvYhouGv8o1H92NW/UezVs1JEJWgiHQ50Lez9Ao0RbS+rV/wZrD7Bvi+ns+9M5
-# oYIDhDCCA4AGCSqGSIb3DQEJBjGCA3EwggNtAgEBMHMwXjELMAkGA1UEBhMCQkUx
-# GTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAyBgNVBAMTK0dsb2JhbFNpZ24g
-# T2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIwMjUCEQCEcj+4MA37qHWzO1fM
-# JjeCMAsGCWCGSAFlAwQCAqCCAVEwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAc
-# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTQ5WjArBgkqhkiG9w0BCTQxHjAcMAsG
-# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQw4lqmYoBc
-# hmAqYkE4yu2DkawVkrASqhL4P//h3ZM0mpyFxZijHvsEMo1zUJ6CXlQsMIGoBgsq
-# hkiG9w0BCRACDDGBmDCBlTCBkjCBjwQUHSS/Gatriz8ckaZYxdNUZIEjnS4wdzBi
-# pGAwXjELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAy
-# BgNVBAMTK0dsb2JhbFNpZ24gT2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIw
-# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgDli19RpAfKD
-# RPC7nxTrFTNzdAmksAy+z9X5TdxROQlApWPVkH0j6IUzwX57xZ4B0O3m36Kf2VVQ
-# yWLFKaQT5gkLqEtxo7snUeiHB6da+1EeRU3XkJMwC+mDJktI5cmO3xXYxInoPriI
-# 0w9sMQuPogugnwV/V3Sns71HaT2BbT41miUjNbaGytiepR/iTGc4+5NlP5YJlTM3
-# eub7bUBEklhKXnRq/zXO7RM7HhiarHsOcqZ6R3kdcVnm5LzJneNk4O6GKaIRcZ0O
-# 50v60xJuvQVZ7eAhQs1j8JReTfFjRHxpKTohEHd+6qL36YpElB5ByV6bvSUQApTU
-# 4wYRVXfvBGF0md2feQEG2ugwdxPCX8CaqDYNlVio2ZyrEXoXpMOT9xulC9qQUrl2
-# VgDrctKAxDA/Li+iZdPkohZGgJbO0AD4MWvE5MMwpZVx98TUIOPHMumATCjPXXP5
-# CNtNCvFni5G1aSi0QBVTRvGB08ypTo0zgX+eitEGePgc7ZeXWXWwNg==
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDdvVyR
+# TnOPGeS221BoQB0LoW6u80HtfdCp8CcBEoLBgzAKBggqhkjOPQQDAgRnMGUCMHIQ
+# Ok1b0DMtG8nLe40/Qj6D/qxRIv/GR6372O5F0JmQJDvHNvxRb1HwlmqkSpGtOwIx
+# AK3eT35KK/BrHqYjsxx65yGWn0UZGkMuPARQrJhym8YFKrSxEsynCiv8eUgm8fO9
+# 2qGCA4QwggOABgkqhkiG9w0BCQYxggNxMIIDbQIBATBzMF4xCzAJBgNVBAYTAkJF
+# MRkwFwYDVQQKExBHbG9iYWxTaWduIG52LXNhMTQwMgYDVQQDEytHbG9iYWxTaWdu
+# IE9mZmxpbmUgUjQ1IFRpbWVzdGFtcGluZyBDQSAyMDI1AhEAhHI/uDAN+6h1sztX
+# zCY3gjALBglghkgBZQMEAgKgggFRMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEw
+# HAYJKoZIhvcNAQkFMQ8XDTI2MDcwMTE0NDYwOFowKwYJKoZIhvcNAQk0MR4wHDAL
+# BglghkgBZQMEAgKhDQYJKoZIhvcNAQEMBQAwPwYJKoZIhvcNAQkEMTIEMN81g+sE
+# W6Otkbmm7oMEppPg4Av0Blmi8UdGTWVIO5ifk+brufPyrl5EinCzjSu0RDCBqAYL
+# KoZIhvcNAQkQAgwxgZgwgZUwgZIwgY8EFB0kvxmra4s/HJGmWMXTVGSBI50uMHcw
+# YqRgMF4xCzAJBgNVBAYTAkJFMRkwFwYDVQQKExBHbG9iYWxTaWduIG52LXNhMTQw
+# MgYDVQQDEytHbG9iYWxTaWduIE9mZmxpbmUgUjQ1IFRpbWVzdGFtcGluZyBDQSAy
+# MDI1AhEAhHI/uDAN+6h1sztXzCY3gjANBgkqhkiG9w0BAQwFAASCAYBL60je56FW
+# ReBDhGYWHJc6zexYtENsOSKUyLVZ1jEGjgSl4NKWv4qy9iofwAACPBQv/qB5wWcF
+# jIU+y8y00Re5ZgiIZhjIen0fFBpmSe+sEDukgh7QcbgfNSy0z/roglteedzI7yBm
+# TH5WihOwDAyr88/VNFjlt/PhyLRkM8s4jswH8faVaLQJ6szPclQYPkMxNsWdLonX
+# 8rwDqaQfQKJq6Jg3vFNmAy2mm8DM7oQoSnVY1CM1aUOH43Oceez9G9dnrDMWH1YI
+# mMQfm2mwFnvX1BKV6ia0QzFJKvLlUvP5J8Yy9peMS+TrCPCFPoQe4ybxR1q3lj6x
+# abny8zpVbd3FXAo4FchN+ix/C2awc9JbL7KpKbdq0sGgvBJgPOu5Qry69INBb4dD
+# cc4Cdbc/vuyaOt4DEyCvmM1CkD+LvElhO6hMgCoFWixyJKQ+0KUz6l7Z2EApRFlL
+# GS+5jbEihbTIboRxJqwVgIwsTxzn8s/ZpTCLTDzY8LA8Eztu39/OkBQ=
 # SIG # End signature block

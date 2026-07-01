@@ -1,35 +1,200 @@
 <#
-	===========================================================================
-	 Module Name: QlikNPrinting-CLI
-	===========================================================================
-	 Qlik NPrinting CLI - PowerShell module to work with NPrinting.
-	 The function "Invoke-NPRequest" can be used to access all the NPrinting APIs.
-
-	 Module loader: dot-sources every function under src/Private and src/Public at
-	 import time, then exports the public functions. To add a function, drop a
-	 .ps1 into the matching folder - no build step required.
+.SYNOPSIS
+	Sends an authenticated request to the NPrinting API.
+.DESCRIPTION
+	Core function of the module. Builds the request URI, attaches the session
+	cookies and X-XSRF-TOKEN header, serialises the body and unwraps the standard
+	NPrinting { data / items } envelope. Every other Get-NP* function calls this.
+.PARAMETER Path
+	Absolute URL, or a path relative to the API root (or the NPE root with -NPE).
+.PARAMETER Method
+	HTTP method (default: Get).
+.PARAMETER Data
+	Request body. Hashtables/objects are converted to JSON; strings are sent as-is
+	when they already look like JSON, otherwise they are JSON-encoded.
+.PARAMETER Depth
+	ConvertTo-Json depth for the body (default: 5).
+.PARAMETER NPE
+	Target the NPE (NPrinting Private Endpoint) API root instead of the standard API.
+.PARAMETER Count
+	NPE: number of items per page (default: -1).
+.PARAMETER OrderBy
+	NPE: property to order by (default: Name).
+.PARAMETER Page
+	NPE: page number (default: 1).
+.PARAMETER OutFile
+	Save the response body to this file instead of returning it.
 #>
+function Invoke-NPRequest {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory = $true, Position = 0)]
+		[string]$Path,
 
-$srcRoot = Join-Path $PSScriptRoot 'src'
-$private = @(Get-ChildItem -Path (Join-Path $srcRoot 'Private') -Filter '*.ps1' -ErrorAction SilentlyContinue)
-$public = @(Get-ChildItem -Path (Join-Path $srcRoot 'Public') -Filter '*.ps1' -ErrorAction SilentlyContinue)
+		[ValidateSet('Get', 'Post', 'Patch', 'Delete', 'Put')]
+		[string]$Method = 'Get',
 
-foreach ($file in @($private + $public)) {
+		$Data,
+
+		[int]$Depth = 5,
+
+		[Parameter(ParameterSetName = 'NPE')]
+		[switch]$NPE,
+
+		[Parameter(ParameterSetName = 'NPE')]
+		[int]$Count = -1,
+
+		[Parameter(ParameterSetName = 'NPE')]
+		[string]$OrderBy = 'Name',
+
+		[Parameter(ParameterSetName = 'NPE')]
+		[int]$Page = 1,
+
+		[System.IO.FileInfo]$OutFile
+	)
+
+	$NPEnv = $script:NPEnv
+	if ($null -eq $NPEnv) {
+		Write-Warning "No active session; attempting to establish a default connection."
+		Connect-NPrinting
+		$NPEnv = $script:NPEnv
+	}
+
+	if ([uri]::IsWellFormedUriString($Path, [System.UriKind]::Absolute)) {
+		$uri = $Path
+	}
+	elseif ($NPE.IsPresent) {
+		$npePath = $Path
+		if (-not $npePath.Contains('count=')) {
+			$sep = if ($npePath.Contains('?')) { '&' } else { '?' }
+			$npePath = "$npePath$($sep)count=$Count"
+		}
+		if (-not $npePath.Contains('orderBy=')) {
+			$npePath = "$npePath&orderBy=$OrderBy"
+		}
+		if (-not $npePath.Contains('page=')) {
+			$npePath = "$npePath&page=$Page"
+		}
+		$uri = "$($NPEnv.URLServerNPE)/$npePath"
+	}
+	else {
+		$uri = "$($NPEnv.URLServerAPI)/$Path"
+	}
+
+	$splat = @{
+		URI         = $uri
+		WebSession  = $NPEnv.WebRequestSession
+		Method      = $Method
+		ContentType = 'application/json;charset=UTF-8'
+		Headers     = Get-XSRFToken
+	}
+
+	# PowerShell 7+ trusts self-signed certs per-request; 5.x is handled globally
+	# in Enable-NPTrustAllCerts.
+	if ($NPEnv.TrustAllCerts -and $PSVersionTable.PSVersion.Major -gt 5) {
+		$splat.SkipCertificateCheck = $true
+	}
+
+	# On the first request (before any auth cookie exists) send explicit creds.
+	$hasCookie = $NPEnv.WebRequestSession.Cookies.GetCookies($NPEnv.URLServerBase).Count -gt 0
+	if (-not $hasCookie -and $null -ne $NPEnv.Credentials) {
+		$splat.Credential = $NPEnv.Credentials
+	}
+
+	if ($null -ne $Data) {
+		if ($Data -is [string]) {
+			$trimmed = $Data.Trim()
+			$looksJson = ($trimmed.StartsWith('{') -and $trimmed.EndsWith('}')) -or
+				($trimmed.StartsWith('[') -and $trimmed.EndsWith(']'))
+			$splat.Body = if ($looksJson) { $Data } else { $Data | ConvertTo-Json -Depth $Depth }
+		}
+		else {
+			$splat.Body = $Data | ConvertTo-Json -Depth $Depth
+		}
+	}
+
+	if ($PSBoundParameters.ContainsKey('OutFile')) {
+		$splat.OutFile = $OutFile
+	}
+
+	# Capture response headers on PowerShell 6.1+ so create (201) responses can
+	# surface the new resource id from the Location header. (Not available on
+	# Windows PowerShell 5.1, where creates simply return no id.)
+	$respHeaders = $null
+	if ($PSVersionTable.PSVersion -ge [version]'6.1.0') {
+		$splat.ResponseHeadersVariable = 'respHeaders'
+	}
+
+	if ($PSBoundParameters.Debug.IsPresent) {
+		$Global:NPSplat = $splat
+	}
+
 	try {
-		. $file.FullName
+		$result = Invoke-RestMethod @splat
 	}
 	catch {
-		Write-Error "Failed to import function $($file.FullName): $_"
+		# Works for both Windows PowerShell (WebException -> HttpWebResponse) and
+		# PowerShell 7 (HttpResponseException -> HttpResponseMessage).
+		$ex = $_.Exception
+		$resp = $ex.Response
+		if ($null -ne $resp) {
+			$url = if ($resp.PSObject.Properties['ResponseUri']) { $resp.ResponseUri.AbsoluteUri }
+				elseif ($resp.PSObject.Properties['RequestMessage'] -and $resp.RequestMessage) { $resp.RequestMessage.RequestUri.AbsoluteUri }
+				else { $uri }
+			$status = if ($resp.PSObject.Properties['StatusDescription']) { $resp.StatusDescription }
+				elseif ($resp.PSObject.Properties['ReasonPhrase']) { $resp.ReasonPhrase }
+				else { $ex.Message }
+			Write-Warning "From: $url`nResponse: $status"
+		}
+		Write-Error -Message "NPrinting request failed: $($ex.Message)" -Exception $ex
+		return
+	}
+
+	if ($PSBoundParameters.Debug.IsPresent) {
+		Write-Warning "Session XSRF Token: $(Get-XSRFToken -Raw)"
+	}
+
+	if ($PSBoundParameters.ContainsKey('OutFile')) {
+		return
+	}
+
+	# Create/update/delete typically return an empty body. Surface the new id from
+	# the Location header when present (POST create); otherwise return nothing.
+	if ($null -eq $result -or ($result -is [string] -and [string]::IsNullOrWhiteSpace($result))) {
+		if ($respHeaders -and $respHeaders['Location']) {
+			$location = @($respHeaders['Location'])[0]
+			return [pscustomobject]@{
+				id       = ($location -split '/')[-1]
+				location = $location
+			}
+		}
+		Write-Verbose "Request returned no content."
+		return
+	}
+
+	if ($NPE.IsPresent -or $null -ne $result.result) {
+		$result = $result.Result
+	}
+
+	$props = @($result | Get-Member -MemberType Properties)
+	if ($props.Count -eq 1 -and $null -ne $result.data) {
+		if ($null -ne $result.data.items) {
+			$result.data.items
+		}
+		else {
+			$result.data
+		}
+	}
+	else {
+		$result
 	}
 }
-
-Export-ModuleMember -Function $public.BaseName
 
 # SIG # Begin signature block
 # MIIfdAYJKoZIhvcNAQcCoIIfZTCCH2ECAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDiXAbxXvv6hulE
-# 0McpEE/uT6K+K0NV8Wk3L6de5E/Ov6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCB4UlVZWKph1NS
+# tEdXRKpNIl/Pshr8XQQQux5UqtgbhKCCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
 # /xLZmv82guWnMAoGCCqGSM49BAMDMHwxCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVU
 # ZXhhczEQMA4GA1UEBwwHSG91c3RvbjEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9u
 # MTEwLwYDVQQDDChTU0wuY29tIFJvb3QgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkg
@@ -171,27 +336,27 @@ Export-ModuleMember -Function $public.BaseName
 # b3VzdG9uMREwDwYDVQQKDAhTU0wgQ29ycDE0MDIGA1UEAwwrU1NMLmNvbSBDb2Rl
 # IFNpZ25pbmcgSW50ZXJtZWRpYXRlIENBIEVDQyBSMgIQZUv1paC174CCCE9ugRr/
 # AjANBglghkgBZQMEAgEFAKBqMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDB3fE4
-# NDeRRr9uOp44THa5UvAE47tYDZmUvGsOsLuWlDAKBggqhkjOPQQDAgRmMGQCMGzW
-# 5aqSaU5StsBzwITPFE2uX5u7JCCz1Eygd2x66Yp/BdhAFhi4RMpN7AvxZyQ50gIw
-# c5bvYhouGv8o1H92NW/UezVs1JEJWgiHQ50Lez9Ao0RbS+rV/wZrD7Bvi+ns+9M5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCAdJU9a
+# hnlnNQ5MMtPKm7ZqgXd0hDkO1XJmEPM4x9ldYjAKBggqhkjOPQQDAgRmMGQCMDLb
+# 93SYBrtBbbYtsYva8J+Wu/RfKuuq3QMEXmrpZtXRtYjlPc2qU53f4ebBIbJJFwIw
+# A2d/3UidwSIHGepGzWscD2pN0JJsGgu04YwOzspwS9rjXN7yauvgAaQy4JyeYWQl
 # oYIDhDCCA4AGCSqGSIb3DQEJBjGCA3EwggNtAgEBMHMwXjELMAkGA1UEBhMCQkUx
 # GTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAyBgNVBAMTK0dsb2JhbFNpZ24g
 # T2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIwMjUCEQCEcj+4MA37qHWzO1fM
 # JjeCMAsGCWCGSAFlAwQCAqCCAVEwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAc
-# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTQ5WjArBgkqhkiG9w0BCTQxHjAcMAsG
-# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQw4lqmYoBc
-# hmAqYkE4yu2DkawVkrASqhL4P//h3ZM0mpyFxZijHvsEMo1zUJ6CXlQsMIGoBgsq
+# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NjExWjArBgkqhkiG9w0BCTQxHjAcMAsG
+# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQwz01sknhU
+# WpvO/YQuxqBx2H2DlL1ePRowLJa8ld1FfD/cs0axqktWPG7gsQNHrcxIMIGoBgsq
 # hkiG9w0BCRACDDGBmDCBlTCBkjCBjwQUHSS/Gatriz8ckaZYxdNUZIEjnS4wdzBi
 # pGAwXjELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAy
 # BgNVBAMTK0dsb2JhbFNpZ24gT2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIw
-# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgDli19RpAfKD
-# RPC7nxTrFTNzdAmksAy+z9X5TdxROQlApWPVkH0j6IUzwX57xZ4B0O3m36Kf2VVQ
-# yWLFKaQT5gkLqEtxo7snUeiHB6da+1EeRU3XkJMwC+mDJktI5cmO3xXYxInoPriI
-# 0w9sMQuPogugnwV/V3Sns71HaT2BbT41miUjNbaGytiepR/iTGc4+5NlP5YJlTM3
-# eub7bUBEklhKXnRq/zXO7RM7HhiarHsOcqZ6R3kdcVnm5LzJneNk4O6GKaIRcZ0O
-# 50v60xJuvQVZ7eAhQs1j8JReTfFjRHxpKTohEHd+6qL36YpElB5ByV6bvSUQApTU
-# 4wYRVXfvBGF0md2feQEG2ugwdxPCX8CaqDYNlVio2ZyrEXoXpMOT9xulC9qQUrl2
-# VgDrctKAxDA/Li+iZdPkohZGgJbO0AD4MWvE5MMwpZVx98TUIOPHMumATCjPXXP5
-# CNtNCvFni5G1aSi0QBVTRvGB08ypTo0zgX+eitEGePgc7ZeXWXWwNg==
+# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgEUNJo666vOH
+# qZYqpKUIpSX7cYfxziCl7qoJXpygPsYzCxBX2Pu+VBJz/iMlByZsJVBu8Icc5CcQ
+# i11EWC2UuLmvN6p84N5cKKtXCLAsdiiXCLibVx/6Kxdk0hW2oVOaDhWudPgf2MF3
+# tL9quNBjtgWYKvv3ShSe5Nz7J7E01HmOwNJosQMuBF7y4RpMTviMczgvuDGpLY7G
+# ZjZNe7VfkZYNGjnso2xIFEF7IIhJ055n4ZTBcz0tasaYKnZ4lxesg9GeqjRKMH44
+# dMxE0vXMhBFqqGZc9QhbQzBZ1P6L3tPkuu5HTWNuOF3MSXN/Y/RAUecbBtGuCZUz
+# 0fEQrT03dMSpFWEnTwgu1nu6cRJF7vX8hTGjIjKlR7DtcRPohSqHOy8AvTFZgDzb
+# BHNKuNHwfrBRkbAyc9Ogmxk2hitAetEdagsrNDYQSw1wd4o0dDgQSBeBFDvuwrht
+# oCkfVaPMHvLx1M54B3o7pKvdQhQ14f2Hpd9QkcqSNN65X973mRE66w==
 # SIG # End signature block

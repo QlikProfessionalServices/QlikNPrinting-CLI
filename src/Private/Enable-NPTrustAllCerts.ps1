@@ -1,35 +1,55 @@
 <#
-	===========================================================================
-	 Module Name: QlikNPrinting-CLI
-	===========================================================================
-	 Qlik NPrinting CLI - PowerShell module to work with NPrinting.
-	 The function "Invoke-NPRequest" can be used to access all the NPrinting APIs.
+.SYNOPSIS
+	Configures the session to trust all TLS certificates.
+.DESCRIPTION
+	NPrinting servers frequently use self-signed certificates. On Windows
+	PowerShell 5.x there is no per-request switch, so a process-wide
+	ServerCertificateValidationCallback is installed and TLS 1.2 is enabled.
 
-	 Module loader: dot-sources every function under src/Private and src/Public at
-	 import time, then exports the public functions. To add a function, drop a
-	 .ps1 into the matching folder - no build step required.
+	On PowerShell 7+ certificate validation is skipped per-request via
+	-SkipCertificateCheck (added in Invoke-NPRequest), so this helper is a no-op
+	there. Internal helper called by Connect-NPrinting.
 #>
+function Enable-NPTrustAllCerts {
+	[CmdletBinding()]
+	param()
 
-$srcRoot = Join-Path $PSScriptRoot 'src'
-$private = @(Get-ChildItem -Path (Join-Path $srcRoot 'Private') -Filter '*.ps1' -ErrorAction SilentlyContinue)
-$public = @(Get-ChildItem -Path (Join-Path $srcRoot 'Public') -Filter '*.ps1' -ErrorAction SilentlyContinue)
-
-foreach ($file in @($private + $public)) {
-	try {
-		. $file.FullName
+	if ($PSVersionTable.PSVersion.Major -gt 5) {
+		Write-Verbose "PowerShell 7+ detected; certificate check is skipped per-request."
+		return
 	}
-	catch {
-		Write-Error "Failed to import function $($file.FullName): $_"
+
+	if (-not ('CTrustAllCerts' -as [type])) {
+		Add-Type -TypeDefinition @"
+using System;
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+
+public static class CTrustAllCerts {
+	public static bool ReturnTrue(object sender,
+		X509Certificate certificate,
+		X509Chain chain,
+		SslPolicyErrors sslPolicyErrors) { return true; }
+
+	public static RemoteCertificateValidationCallback GetDelegate() {
+		return new RemoteCertificateValidationCallback(CTrustAllCerts.ReturnTrue);
 	}
 }
+"@
+		Write-Verbose "Added certificate-ignore type."
+	}
 
-Export-ModuleMember -Function $public.BaseName
+	[System.Net.ServicePointManager]::ServerCertificateValidationCallback = [CTrustAllCerts]::GetDelegate()
+	[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+	Write-Verbose "Server certificate validation bypass enabled (Windows PowerShell)."
+}
 
 # SIG # Begin signature block
-# MIIfdAYJKoZIhvcNAQcCoIIfZTCCH2ECAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIIfdgYJKoZIhvcNAQcCoIIfZzCCH2MCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDiXAbxXvv6hulE
-# 0McpEE/uT6K+K0NV8Wk3L6de5E/Ov6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCAJX1Qg/ifC70yD
+# 9SGhjmsAzFyHtyV7GBYTt0Roo1bV3aCCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
 # /xLZmv82guWnMAoGCCqGSM49BAMDMHwxCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVU
 # ZXhhczEQMA4GA1UEBwwHSG91c3RvbjEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9u
 # MTEwLwYDVQQDDChTU0wuY29tIFJvb3QgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkg
@@ -166,32 +186,32 @@ Export-ModuleMember -Function $public.BaseName
 # MkpY+Rfl53oOEN4yTvtwCYP+VDuZrktc7NacoTVxZnKGkv8a1akckdOwQZC+i8Ay
 # 1VyzMAX/Tb4+r3c65B7cpAtq3OoUijXUJgvZxci6TX78smL2TYy2tWn+8G4krnXv
 # y2ELR2XYnKEOS4MVmrSCsjM5nxSrghE10VDXQbEfa93lhikfFoIuINKzWDLqvu8Z
-# ucmxEufxpHjNnnRVXX/Zv5KQq8pu/MQoOz6DC74n5+O5bSwvT5sgMYIFDTCCBQkC
+# ucmxEufxpHjNnnRVXX/Zv5KQq8pu/MQoOz6DC74n5+O5bSwvT5sgMYIFDzCCBQsC
 # AQEwgYwweDELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVRleGFzMRAwDgYDVQQHDAdI
 # b3VzdG9uMREwDwYDVQQKDAhTU0wgQ29ycDE0MDIGA1UEAwwrU1NMLmNvbSBDb2Rl
 # IFNpZ25pbmcgSW50ZXJtZWRpYXRlIENBIEVDQyBSMgIQZUv1paC174CCCE9ugRr/
 # AjANBglghkgBZQMEAgEFAKBqMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDB3fE4
-# NDeRRr9uOp44THa5UvAE47tYDZmUvGsOsLuWlDAKBggqhkjOPQQDAgRmMGQCMGzW
-# 5aqSaU5StsBzwITPFE2uX5u7JCCz1Eygd2x66Yp/BdhAFhi4RMpN7AvxZyQ50gIw
-# c5bvYhouGv8o1H92NW/UezVs1JEJWgiHQ50Lez9Ao0RbS+rV/wZrD7Bvi+ns+9M5
-# oYIDhDCCA4AGCSqGSIb3DQEJBjGCA3EwggNtAgEBMHMwXjELMAkGA1UEBhMCQkUx
-# GTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAyBgNVBAMTK0dsb2JhbFNpZ24g
-# T2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIwMjUCEQCEcj+4MA37qHWzO1fM
-# JjeCMAsGCWCGSAFlAwQCAqCCAVEwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAc
-# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTQ5WjArBgkqhkiG9w0BCTQxHjAcMAsG
-# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQw4lqmYoBc
-# hmAqYkE4yu2DkawVkrASqhL4P//h3ZM0mpyFxZijHvsEMo1zUJ6CXlQsMIGoBgsq
-# hkiG9w0BCRACDDGBmDCBlTCBkjCBjwQUHSS/Gatriz8ckaZYxdNUZIEjnS4wdzBi
-# pGAwXjELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAy
-# BgNVBAMTK0dsb2JhbFNpZ24gT2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIw
-# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgDli19RpAfKD
-# RPC7nxTrFTNzdAmksAy+z9X5TdxROQlApWPVkH0j6IUzwX57xZ4B0O3m36Kf2VVQ
-# yWLFKaQT5gkLqEtxo7snUeiHB6da+1EeRU3XkJMwC+mDJktI5cmO3xXYxInoPriI
-# 0w9sMQuPogugnwV/V3Sns71HaT2BbT41miUjNbaGytiepR/iTGc4+5NlP5YJlTM3
-# eub7bUBEklhKXnRq/zXO7RM7HhiarHsOcqZ6R3kdcVnm5LzJneNk4O6GKaIRcZ0O
-# 50v60xJuvQVZ7eAhQs1j8JReTfFjRHxpKTohEHd+6qL36YpElB5ByV6bvSUQApTU
-# 4wYRVXfvBGF0md2feQEG2ugwdxPCX8CaqDYNlVio2ZyrEXoXpMOT9xulC9qQUrl2
-# VgDrctKAxDA/Li+iZdPkohZGgJbO0AD4MWvE5MMwpZVx98TUIOPHMumATCjPXXP5
-# CNtNCvFni5G1aSi0QBVTRvGB08ypTo0zgX+eitEGePgc7ZeXWXWwNg==
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDl4WSn
+# 1lsKeqqtwd3be8T3UkH/0SB+Tlzl4KeQCwCX2zAKBggqhkjOPQQDAgRoMGYCMQCf
+# LHesQj6f3hhOm0gLilT3pJrGkcz4Dr+WF9rFIXzL7xuX9oD6NqbTDiEuL36rC7IC
+# MQCxer20sOVydDeQ0RlFqMLU2Eh/W8geuNrpm1RR/xktiQgbukWFkmzm+ql+EVQy
+# gSehggOEMIIDgAYJKoZIhvcNAQkGMYIDcTCCA20CAQEwczBeMQswCQYDVQQGEwJC
+# RTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTE0MDIGA1UEAxMrR2xvYmFsU2ln
+# biBPZmZsaW5lIFI0NSBUaW1lc3RhbXBpbmcgQ0EgMjAyNQIRAIRyP7gwDfuodbM7
+# V8wmN4IwCwYJYIZIAWUDBAICoIIBUTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcB
+# MBwGCSqGSIb3DQEJBTEPFw0yNjA3MDExNDQ1NTJaMCsGCSqGSIb3DQEJNDEeMBww
+# CwYJYIZIAWUDBAICoQ0GCSqGSIb3DQEBDAUAMD8GCSqGSIb3DQEJBDEyBDCaj3by
+# pPzmMaf12AGBo3mwScFhaB5prhJucXiE7T8Fr51o4d/zRmjQ4VxmnWmwL8cwgagG
+# CyqGSIb3DQEJEAIMMYGYMIGVMIGSMIGPBBQdJL8Zq2uLPxyRpljF01RkgSOdLjB3
+# MGKkYDBeMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTE0
+# MDIGA1UEAxMrR2xvYmFsU2lnbiBPZmZsaW5lIFI0NSBUaW1lc3RhbXBpbmcgQ0Eg
+# MjAyNQIRAIRyP7gwDfuodbM7V8wmN4IwDQYJKoZIhvcNAQEMBQAEggGAZAqvoUwq
+# QNjBh8W/c05Gtp1oTZhH+WN7LvcEfx6wxbifPVoVxajurB2zZh+ZbjMcezvnaBza
+# q6aTS5zzmrUtcjucOtcdbOJl0GRZSdq4WAnL1b32YbJHdQ5dRg1djOyIZuJwhIOU
+# djNkg2hLlODPrp2TnCvuvK8l4IeGwTpqa8Dk8AbAp+3hNMdEtFhR/yEWbk2wFBQ+
+# htF9kQrVF478eyABudw0qsZGqjzqOjy3YtF0afn1NjNg6jCgfel1B/ieURAKbvMa
+# 6R9ZvbVtD0GmBbprdx+Ud8bS+Ebkl1Z48WaTm2z/kYOCHhNooicTPYgN+UktfdQa
+# Av8331QoJ/LZbfqyMKiFJNAekXz726SWAMznAnSAx3KxzqaFfY2+IKW7TvrBwBbC
+# Rauk77WRuVv1Wjai/wl2ENuJn6Z5y+v486+tioaKxTmK5qu7Z+bqrimbcyGzw1cm
+# s5zZH6siPoUP1ItZAtw3D1Z8fjWx4BzDwEwjUYBrDoyNQyUW245xA/Y6
 # SIG # End signature block

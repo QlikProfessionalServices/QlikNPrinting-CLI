@@ -1,35 +1,57 @@
 <#
-	===========================================================================
-	 Module Name: QlikNPrinting-CLI
-	===========================================================================
-	 Qlik NPrinting CLI - PowerShell module to work with NPrinting.
-	 The function "Invoke-NPRequest" can be used to access all the NPrinting APIs.
-
-	 Module loader: dot-sources every function under src/Private and src/Public at
-	 import time, then exports the public functions. To add a function, drop a
-	 .ps1 into the matching folder - no build step required.
+.SYNOPSIS
+	Gets the Apps defined in NPrinting, with optional name filtering.
+.DESCRIPTION
+	The full Apps list is cached in $script:NPapps to avoid repeat calls. The
+	cache is refreshed when empty, when -Update is supplied, or when a specific
+	-ID is requested. Name filtering is applied to the (cached) result and
+	supports the * wildcard.
+.PARAMETER ID
+	Id of a specific app to get.
+.PARAMETER Name
+	Name to filter on (supports the * wildcard).
+.PARAMETER Update
+	Refresh the internal cache only, without emitting the result.
 #>
+function Get-NPApps {
+	[CmdletBinding()]
+	param(
+		$ID,
 
-$srcRoot = Join-Path $PSScriptRoot 'src'
-$private = @(Get-ChildItem -Path (Join-Path $srcRoot 'Private') -Filter '*.ps1' -ErrorAction SilentlyContinue)
-$public = @(Get-ChildItem -Path (Join-Path $srcRoot 'Public') -Filter '*.ps1' -ErrorAction SilentlyContinue)
+		[string]$Name,
 
-foreach ($file in @($private + $public)) {
-	try {
-		. $file.FullName
+		[Parameter(DontShow)]
+		[switch]$Update
+	)
+
+	$basePath = 'Apps'
+	$path = if ($null -ne $ID) { "$basePath/$ID" } else { $basePath }
+	Write-Verbose $path
+
+	if ($null -eq $script:NPapps -or $Update.IsPresent -or $PSBoundParameters.ContainsKey('ID')) {
+		$script:NPapps = Invoke-NPRequest -Path $path -Method Get
 	}
-	catch {
-		Write-Error "Failed to import function $($file.FullName): $_"
+	if ($Update.IsPresent) {
+		return
 	}
+
+	$apps = $script:NPapps
+	if ($PSBoundParameters.ContainsKey('Name')) {
+		$apps = if ($Name -match '\*') {
+			$apps | Where-Object { $_.name -like $Name }
+		}
+		else {
+			$apps | Where-Object { $_.name -eq $Name }
+		}
+	}
+	$apps
 }
-
-Export-ModuleMember -Function $public.BaseName
 
 # SIG # Begin signature block
 # MIIfdAYJKoZIhvcNAQcCoIIfZTCCH2ECAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDiXAbxXvv6hulE
-# 0McpEE/uT6K+K0NV8Wk3L6de5E/Ov6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBHFnZx8adklnLv
+# QAj3M4WxnDXGBWdUFTqHYHtSMIk4P6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
 # /xLZmv82guWnMAoGCCqGSM49BAMDMHwxCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVU
 # ZXhhczEQMA4GA1UEBwwHSG91c3RvbjEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9u
 # MTEwLwYDVQQDDChTU0wuY29tIFJvb3QgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkg
@@ -171,27 +193,27 @@ Export-ModuleMember -Function $public.BaseName
 # b3VzdG9uMREwDwYDVQQKDAhTU0wgQ29ycDE0MDIGA1UEAwwrU1NMLmNvbSBDb2Rl
 # IFNpZ25pbmcgSW50ZXJtZWRpYXRlIENBIEVDQyBSMgIQZUv1paC174CCCE9ugRr/
 # AjANBglghkgBZQMEAgEFAKBqMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDB3fE4
-# NDeRRr9uOp44THa5UvAE47tYDZmUvGsOsLuWlDAKBggqhkjOPQQDAgRmMGQCMGzW
-# 5aqSaU5StsBzwITPFE2uX5u7JCCz1Eygd2x66Yp/BdhAFhi4RMpN7AvxZyQ50gIw
-# c5bvYhouGv8o1H92NW/UezVs1JEJWgiHQ50Lez9Ao0RbS+rV/wZrD7Bvi+ns+9M5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCCPX2VT
+# 8DWog8axQEIW5A+4t+YI8+QQNBM1AKqpJgk27TAKBggqhkjOPQQDAgRmMGQCMDY6
+# aldsZz7sq+g4APWdlALHsiWzAlapoXA3VUwWjwE/0UP58UZvtlaTZTh3jVRb2QIw
+# W4ufyHSwgjCyNSdebUJ1h2a34NI/Y2FXGaFTxKu1Gjn1gQUiF8BOw2HJTvK0BkBX
 # oYIDhDCCA4AGCSqGSIb3DQEJBjGCA3EwggNtAgEBMHMwXjELMAkGA1UEBhMCQkUx
 # GTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAyBgNVBAMTK0dsb2JhbFNpZ24g
 # T2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIwMjUCEQCEcj+4MA37qHWzO1fM
 # JjeCMAsGCWCGSAFlAwQCAqCCAVEwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAc
-# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTQ5WjArBgkqhkiG9w0BCTQxHjAcMAsG
-# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQw4lqmYoBc
-# hmAqYkE4yu2DkawVkrASqhL4P//h3ZM0mpyFxZijHvsEMo1zUJ6CXlQsMIGoBgsq
+# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTU2WjArBgkqhkiG9w0BCTQxHjAcMAsG
+# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQwGB8AKYgC
+# aVOIGg55P96QsjLU0M22OtZ2WekNuUxpVXASgyYf5wD63icUZ0c0gE0WMIGoBgsq
 # hkiG9w0BCRACDDGBmDCBlTCBkjCBjwQUHSS/Gatriz8ckaZYxdNUZIEjnS4wdzBi
 # pGAwXjELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAy
 # BgNVBAMTK0dsb2JhbFNpZ24gT2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIw
-# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgDli19RpAfKD
-# RPC7nxTrFTNzdAmksAy+z9X5TdxROQlApWPVkH0j6IUzwX57xZ4B0O3m36Kf2VVQ
-# yWLFKaQT5gkLqEtxo7snUeiHB6da+1EeRU3XkJMwC+mDJktI5cmO3xXYxInoPriI
-# 0w9sMQuPogugnwV/V3Sns71HaT2BbT41miUjNbaGytiepR/iTGc4+5NlP5YJlTM3
-# eub7bUBEklhKXnRq/zXO7RM7HhiarHsOcqZ6R3kdcVnm5LzJneNk4O6GKaIRcZ0O
-# 50v60xJuvQVZ7eAhQs1j8JReTfFjRHxpKTohEHd+6qL36YpElB5ByV6bvSUQApTU
-# 4wYRVXfvBGF0md2feQEG2ugwdxPCX8CaqDYNlVio2ZyrEXoXpMOT9xulC9qQUrl2
-# VgDrctKAxDA/Li+iZdPkohZGgJbO0AD4MWvE5MMwpZVx98TUIOPHMumATCjPXXP5
-# CNtNCvFni5G1aSi0QBVTRvGB08ypTo0zgX+eitEGePgc7ZeXWXWwNg==
+# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgJ5Wjwp0A6IY
+# zbrXBs2NR8TtNJFOP97b/rXbEoWAJBRu3RQFhDahOV0XEgwznnWL1KhPEGGW4zLn
+# lpuk9fhR7T5+WGmuayz82KXPu8vlVpsVm/fBXM+O9/XOn/oX+Vc9tDJgUVu1faOU
+# TgSN1lsX1e98RNylh/2Jbme0HamCgm6i0q2ny31DpCezH2rv0ndGUnBaTk0yeXcg
+# yC8eRmtOLuDWRpgYqnXATqZECWjfKLTV6YdmPpVNZz7ALH4DHKj7ew4Emh8F/xkC
+# iE6ZLZOpc0PZugll1g9s+LTVhqgcrS4yUx02Y95BOW2xRvqjo+rYm5O9ZKMGTYoc
+# Dqcc7Y+hpPVyaBlTNloJvALBDXjaAXv6OYCUu/BIQqZkvis3b4XRH5Mjr9xhTSpi
+# D85t9u1ZdIO2YC30e58qNzgtRsDfl6jcU7E6mVrGTUzEtN0eWHkb8h1im9/atV3V
+# lMUf0vw2YqGf5p2nv37q2OSjKIaM4nD1M2kQlYPD6KjR+ppHb0q0qg==
 # SIG # End signature block
