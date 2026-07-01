@@ -1,35 +1,84 @@
 <#
-	===========================================================================
-	 Module Name: QlikNPrinting-CLI
-	===========================================================================
-	 Qlik NPrinting CLI - PowerShell module to work with NPrinting.
-	 The function "Invoke-NPRequest" can be used to access all the NPrinting APIs.
-
-	 Module loader: dot-sources every function under src/Private and src/Public at
-	 import time, then exports the public functions. To add a function, drop a
-	 .ps1 into the matching folder - no build step required.
+.SYNOPSIS
+	Gets details of the Users in NPrinting.
+.DESCRIPTION
+	Retrieves users and, optionally, enriches each with their Roles, Groups and
+	Filters resolved to full objects.
+.PARAMETER ID
+	Id of the user to get.
+.PARAMETER UserName
+	Username to filter on (supports the * wildcard).
+.PARAMETER Email
+	Email address to filter on (supports the * wildcard).
+.PARAMETER Roles
+	Include each user's roles.
+.PARAMETER Groups
+	Include each user's groups.
+.PARAMETER Filters
+	Include each user's filters.
+.PARAMETER Limit
+	Number of objects to return (default is server-side, typically 50).
+.EXAMPLE
+	Get-NPUsers -Roles -Groups -Filters
+.EXAMPLE
+	Get-NPUsers -UserName Marc -Roles -Groups -Filters
 #>
+function Get-NPUsers {
+	[CmdletBinding()]
+	param(
+		[Parameter(ValueFromPipeline = $true)]
+		[string]$ID,
 
-$srcRoot = Join-Path $PSScriptRoot 'src'
-$private = @(Get-ChildItem -Path (Join-Path $srcRoot 'Private') -Filter '*.ps1' -ErrorAction SilentlyContinue)
-$public = @(Get-ChildItem -Path (Join-Path $srcRoot 'Public') -Filter '*.ps1' -ErrorAction SilentlyContinue)
+		[string]$UserName,
 
-foreach ($file in @($private + $public)) {
-	try {
-		. $file.FullName
-	}
-	catch {
-		Write-Error "Failed to import function $($file.FullName): $_"
+		[string]$Email,
+
+		[switch]$Roles,
+
+		[switch]$Groups,
+
+		[switch]$Filters,
+
+		[int32]$Limit
+	)
+
+	process {
+		$basePath = 'Users'
+		$filter = ''
+		if ($PSBoundParameters.ContainsKey('Limit')) {
+			$filter = Add-NPQueryParameter -QueryString $filter -Name 'limit' -Value $Limit.ToString()
+		}
+		if ($PSBoundParameters.ContainsKey('UserName')) {
+			$filter = Add-NPQueryParameter -QueryString $filter -Name 'UserName' -Value $UserName
+		}
+		if ($PSBoundParameters.ContainsKey('Email')) {
+			$filter = Add-NPQueryParameter -QueryString $filter -Name 'EMail' -Value $Email
+		}
+
+		$path = if ($PSBoundParameters.ContainsKey('ID')) { "$basePath/$ID" } else { $basePath }
+		$path = "$path$filter"
+
+		$npUsers = Invoke-NPRequest -Path $path -Method Get
+
+		if ($Roles.IsPresent) {
+			Add-NPProperty -Property 'Roles' -NPObject $npUsers -Path $basePath
+		}
+		if ($Groups.IsPresent) {
+			Add-NPProperty -Property 'Groups' -NPObject $npUsers -Path $basePath
+		}
+		if ($Filters.IsPresent) {
+			Add-NPProperty -Property 'Filters' -NPObject $npUsers -Path $basePath
+		}
+
+		$npUsers
 	}
 }
-
-Export-ModuleMember -Function $public.BaseName
 
 # SIG # Begin signature block
 # MIIfdAYJKoZIhvcNAQcCoIIfZTCCH2ECAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDiXAbxXvv6hulE
-# 0McpEE/uT6K+K0NV8Wk3L6de5E/Ov6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCeaN/VoI2EbcCu
+# VwOClghczTMfmIFeaKk/5U4dAsMvDqCCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
 # /xLZmv82guWnMAoGCCqGSM49BAMDMHwxCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVU
 # ZXhhczEQMA4GA1UEBwwHSG91c3RvbjEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9u
 # MTEwLwYDVQQDDChTU0wuY29tIFJvb3QgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkg
@@ -171,27 +220,27 @@ Export-ModuleMember -Function $public.BaseName
 # b3VzdG9uMREwDwYDVQQKDAhTU0wgQ29ycDE0MDIGA1UEAwwrU1NMLmNvbSBDb2Rl
 # IFNpZ25pbmcgSW50ZXJtZWRpYXRlIENBIEVDQyBSMgIQZUv1paC174CCCE9ugRr/
 # AjANBglghkgBZQMEAgEFAKBqMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDB3fE4
-# NDeRRr9uOp44THa5UvAE47tYDZmUvGsOsLuWlDAKBggqhkjOPQQDAgRmMGQCMGzW
-# 5aqSaU5StsBzwITPFE2uX5u7JCCz1Eygd2x66Yp/BdhAFhi4RMpN7AvxZyQ50gIw
-# c5bvYhouGv8o1H92NW/UezVs1JEJWgiHQ50Lez9Ao0RbS+rV/wZrD7Bvi+ns+9M5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCBZaELm
+# cdOXzthER7fvcPM2Z/WbXBAxLhUJDKkQu95wLzAKBggqhkjOPQQDAgRmMGQCMFEi
+# UYSxzTrSd7kwcWI7+c/YU0QQnbbIYCptg8+boOIVtYjsk+swaEF/K51FI6ZzDwIw
+# E9I057csgyLgp35uEJaDWPkarw0Thij70OvJdfIWImSQyNpdH4RDje8/KvkTqfDW
 # oYIDhDCCA4AGCSqGSIb3DQEJBjGCA3EwggNtAgEBMHMwXjELMAkGA1UEBhMCQkUx
 # GTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAyBgNVBAMTK0dsb2JhbFNpZ24g
 # T2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIwMjUCEQCEcj+4MA37qHWzO1fM
 # JjeCMAsGCWCGSAFlAwQCAqCCAVEwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAc
-# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTQ5WjArBgkqhkiG9w0BCTQxHjAcMAsG
-# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQw4lqmYoBc
-# hmAqYkE4yu2DkawVkrASqhL4P//h3ZM0mpyFxZijHvsEMo1zUJ6CXlQsMIGoBgsq
+# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NjA5WjArBgkqhkiG9w0BCTQxHjAcMAsG
+# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQwxtenDqi8
+# vic67Y6/+h4n6YfChPC9nzQtNa1m6eY/dACP41Wkx853Xq5FBGM2qWxFMIGoBgsq
 # hkiG9w0BCRACDDGBmDCBlTCBkjCBjwQUHSS/Gatriz8ckaZYxdNUZIEjnS4wdzBi
 # pGAwXjELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAy
 # BgNVBAMTK0dsb2JhbFNpZ24gT2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIw
-# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgDli19RpAfKD
-# RPC7nxTrFTNzdAmksAy+z9X5TdxROQlApWPVkH0j6IUzwX57xZ4B0O3m36Kf2VVQ
-# yWLFKaQT5gkLqEtxo7snUeiHB6da+1EeRU3XkJMwC+mDJktI5cmO3xXYxInoPriI
-# 0w9sMQuPogugnwV/V3Sns71HaT2BbT41miUjNbaGytiepR/iTGc4+5NlP5YJlTM3
-# eub7bUBEklhKXnRq/zXO7RM7HhiarHsOcqZ6R3kdcVnm5LzJneNk4O6GKaIRcZ0O
-# 50v60xJuvQVZ7eAhQs1j8JReTfFjRHxpKTohEHd+6qL36YpElB5ByV6bvSUQApTU
-# 4wYRVXfvBGF0md2feQEG2ugwdxPCX8CaqDYNlVio2ZyrEXoXpMOT9xulC9qQUrl2
-# VgDrctKAxDA/Li+iZdPkohZGgJbO0AD4MWvE5MMwpZVx98TUIOPHMumATCjPXXP5
-# CNtNCvFni5G1aSi0QBVTRvGB08ypTo0zgX+eitEGePgc7ZeXWXWwNg==
+# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgFyYcDru+cBP
+# vdreYoIskf/3ZSH+AZQQ8pd2oVhHG/Bi41kHh00bLisCeLw2q1D2uqW7MwU4Cyvy
+# apEMcOixHJJrvLsfyjV1lLLANoSu4TTU1gUZflj9YC8ZMPgg95sdIIUzU2illg9y
+# 08WN/UqAjNFudpa/sE8vGz5P+TENrDyspSr/Mwem6jfqvznonJurVBjltRoFAQwd
+# mo/eE0O4am0RtAnx7thSEVrEqCS8pAcz2PiNm25tiLX6xrAGd9fDCDK8rYjzwdeI
+# 1D8wIc/+WqsnkqcljJ+j/zRsxDdS7quOeTLXWm82FLJmmMIlOjmmqjUo9W8az35C
+# 0MvcDRrizi3qP1GmfZRadCYY79uD5k9b5+6dLvP2WtYib7c4u0YdBmqyV3UoFcFC
+# omMGB4X4CHmeLO6vv6PblQbPIcCFXLeNQ/cumgCASA+rrvNr7RBSwUbvlvSHLpiL
+# kZcSB2KMgMnHolnerSfjz7249ue6N9HK+P/DJNqn21jmT8HT/kmW2g==
 # SIG # End signature block

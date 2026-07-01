@@ -1,35 +1,59 @@
 <#
-	===========================================================================
-	 Module Name: QlikNPrinting-CLI
-	===========================================================================
-	 Qlik NPrinting CLI - PowerShell module to work with NPrinting.
-	 The function "Invoke-NPRequest" can be used to access all the NPrinting APIs.
-
-	 Module loader: dot-sources every function under src/Private and src/Public at
-	 import time, then exports the public functions. To add a function, drop a
-	 .ps1 into the matching folder - no build step required.
+.SYNOPSIS
+	Enriches NPrinting objects with a related collection (Roles/Groups/Filters).
+.DESCRIPTION
+	For each object, requests the related IDs (e.g. users/{id}/roles) and resolves
+	them to full objects using the cached $script:NP<Property> list. If an ID is
+	missing from the cache the list is refreshed via Get-NP<Property> -Update.
+	The resolved collection is attached as a NoteProperty. Internal helper.
+.PARAMETER Property
+	Related collection name: 'Roles', 'Groups' or 'Filters'.
+.PARAMETER NPObject
+	The object(s) to enrich (must expose an ID property).
+.PARAMETER Path
+	The base API path for the objects (e.g. 'Users').
 #>
+function Add-NPProperty {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory = $true, Position = 0)]
+		[ValidateSet('Roles', 'Groups', 'Filters')]
+		[string]$Property,
 
-$srcRoot = Join-Path $PSScriptRoot 'src'
-$private = @(Get-ChildItem -Path (Join-Path $srcRoot 'Private') -Filter '*.ps1' -ErrorAction SilentlyContinue)
-$public = @(Get-ChildItem -Path (Join-Path $srcRoot 'Public') -Filter '*.ps1' -ErrorAction SilentlyContinue)
+		[Parameter(Mandatory = $true, Position = 1)]
+		[AllowNull()]
+		$NPObject,
 
-foreach ($file in @($private + $public)) {
-	try {
-		. $file.FullName
-	}
-	catch {
-		Write-Error "Failed to import function $($file.FullName): $_"
+		[Parameter(Mandatory = $true, Position = 2)]
+		[string]$Path
+	)
+
+	$propertyValues = Get-Variable -Name "NP$Property" -ValueOnly -ErrorAction SilentlyContinue
+
+	foreach ($object in $NPObject) {
+		$objPath = "$Path/$($object.ID)/$Property"
+		$objPropertyIds = Invoke-NPRequest -Path $objPath -Method Get
+
+		$resolved = foreach ($id in $objPropertyIds) {
+			$match = $propertyValues | Where-Object { $_.id -eq $id }
+			if ($null -eq $match) {
+				Write-Verbose "$id missing from internal $Property list: refreshing"
+				& "Get-NP$Property" -Update
+				$propertyValues = Get-Variable -Name "NP$Property" -ValueOnly
+				$match = $propertyValues | Where-Object { $_.id -eq $id }
+			}
+			$match
+		}
+
+		Add-Member -InputObject $object -MemberType NoteProperty -Name $Property -Value $resolved -Force
 	}
 }
-
-Export-ModuleMember -Function $public.BaseName
 
 # SIG # Begin signature block
 # MIIfdAYJKoZIhvcNAQcCoIIfZTCCH2ECAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDiXAbxXvv6hulE
-# 0McpEE/uT6K+K0NV8Wk3L6de5E/Ov6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCm6a9clIDE1hZN
+# Gz0IvNujpA0FaKr1HL7qDr0pTxBfR6CCGb0wggN5MIIC/qADAgECAhAcz51nzeIZ
 # /xLZmv82guWnMAoGCCqGSM49BAMDMHwxCzAJBgNVBAYTAlVTMQ4wDAYDVQQIDAVU
 # ZXhhczEQMA4GA1UEBwwHSG91c3RvbjEYMBYGA1UECgwPU1NMIENvcnBvcmF0aW9u
 # MTEwLwYDVQQDDChTU0wuY29tIFJvb3QgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkg
@@ -171,27 +195,27 @@ Export-ModuleMember -Function $public.BaseName
 # b3VzdG9uMREwDwYDVQQKDAhTU0wgQ29ycDE0MDIGA1UEAwwrU1NMLmNvbSBDb2Rl
 # IFNpZ25pbmcgSW50ZXJtZWRpYXRlIENBIEVDQyBSMgIQZUv1paC174CCCE9ugRr/
 # AjANBglghkgBZQMEAgEFAKBqMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDB3fE4
-# NDeRRr9uOp44THa5UvAE47tYDZmUvGsOsLuWlDAKBggqhkjOPQQDAgRmMGQCMGzW
-# 5aqSaU5StsBzwITPFE2uX5u7JCCz1Eygd2x66Yp/BdhAFhi4RMpN7AvxZyQ50gIw
-# c5bvYhouGv8o1H92NW/UezVs1JEJWgiHQ50Lez9Ao0RbS+rV/wZrD7Bvi+ns+9M5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCAX94rx
+# omKVo07ttpW6K0Tq85kuvza3fwXzzYRX7m0BFzAKBggqhkjOPQQDAgRmMGQCMEJz
+# sx+3p85Vb9PVAx0mam1TApc5+ZuLZ5liJQiBkNQVU8LDyvqECuNeHOI8SblrSQIw
+# SygXqp2WNJzImBk9CIbKdoaM6mDqKwlVYWGDcs9aVTEhSx8fv1jXwBMx/FMZAhTv
 # oYIDhDCCA4AGCSqGSIb3DQEJBjGCA3EwggNtAgEBMHMwXjELMAkGA1UEBhMCQkUx
 # GTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAyBgNVBAMTK0dsb2JhbFNpZ24g
 # T2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIwMjUCEQCEcj+4MA37qHWzO1fM
 # JjeCMAsGCWCGSAFlAwQCAqCCAVEwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAc
-# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTQ5WjArBgkqhkiG9w0BCTQxHjAcMAsG
-# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQw4lqmYoBc
-# hmAqYkE4yu2DkawVkrASqhL4P//h3ZM0mpyFxZijHvsEMo1zUJ6CXlQsMIGoBgsq
+# BgkqhkiG9w0BCQUxDxcNMjYwNzAxMTQ0NTUwWjArBgkqhkiG9w0BCTQxHjAcMAsG
+# CWCGSAFlAwQCAqENBgkqhkiG9w0BAQwFADA/BgkqhkiG9w0BCQQxMgQw154vK6hg
+# bB5N3WYAavYug6Jjqg1NIn/WH3bVF3WT0EG2KOTjBN0r6mGq0pv+Kp+rMIGoBgsq
 # hkiG9w0BCRACDDGBmDCBlTCBkjCBjwQUHSS/Gatriz8ckaZYxdNUZIEjnS4wdzBi
 # pGAwXjELMAkGA1UEBhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExNDAy
 # BgNVBAMTK0dsb2JhbFNpZ24gT2ZmbGluZSBSNDUgVGltZXN0YW1waW5nIENBIDIw
-# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgDli19RpAfKD
-# RPC7nxTrFTNzdAmksAy+z9X5TdxROQlApWPVkH0j6IUzwX57xZ4B0O3m36Kf2VVQ
-# yWLFKaQT5gkLqEtxo7snUeiHB6da+1EeRU3XkJMwC+mDJktI5cmO3xXYxInoPriI
-# 0w9sMQuPogugnwV/V3Sns71HaT2BbT41miUjNbaGytiepR/iTGc4+5NlP5YJlTM3
-# eub7bUBEklhKXnRq/zXO7RM7HhiarHsOcqZ6R3kdcVnm5LzJneNk4O6GKaIRcZ0O
-# 50v60xJuvQVZ7eAhQs1j8JReTfFjRHxpKTohEHd+6qL36YpElB5ByV6bvSUQApTU
-# 4wYRVXfvBGF0md2feQEG2ugwdxPCX8CaqDYNlVio2ZyrEXoXpMOT9xulC9qQUrl2
-# VgDrctKAxDA/Li+iZdPkohZGgJbO0AD4MWvE5MMwpZVx98TUIOPHMumATCjPXXP5
-# CNtNCvFni5G1aSi0QBVTRvGB08ypTo0zgX+eitEGePgc7ZeXWXWwNg==
+# MjUCEQCEcj+4MA37qHWzO1fMJjeCMA0GCSqGSIb3DQEBDAUABIIBgJ92ZrpzzlTl
+# bjMgY//bw7pJYHzTajKuFGahISRCPWo0CuO3bXDfDt4oh/czN5qoGb1gh5AeEKQp
+# JX5CFGfWTM2MH/50p8NgXHM7GUimD1BoHi3RODikulh9vNHg27FAQLmBYI6dyDzH
+# 2TIi9GcP4XG59BVLni2zarP9Lnd4x4GC3KCzOX91EzMO57rB9NNhHsU9rS3OkPBw
+# 77XhjA8GM3CSjoaVLIhCI8wSyrCuFbRFAkdOPIxC1/v1dVwDJEJUnuuaeXH/KPZt
+# MyieZRCbTTKmUiNIWpWAUUxiZ7ncSKcDz7TvhyoDdvf4oKb1lytvmbwKPlaf1ceX
+# gQ/ow9K021E0v+mGMq0dDCjW6iWacRYLc64l0AgXQ3AnUo5/iBkzW7Kkr43Fv7nl
+# 6QBlohOhyqae+9B4uYb2vu265U/j3xdrS/kGSmU8Hm8b5K0/sIlXYgN6/07T7sJl
+# /0MQbtwJ0k2kYTjCBiUvOfZ2fa81Kzczwtl+z56fFnSNm122LRrb0Q==
 # SIG # End signature block
