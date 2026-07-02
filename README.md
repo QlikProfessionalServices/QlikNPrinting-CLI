@@ -13,7 +13,7 @@ Version history is in [CHANGELOG.md](CHANGELOG.md).
 ## Installation
 ### PowerShell Gallery
 ```PowerShell
-Get-PackageProvider -Name NuGet -ForceBootstrap
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 
 # Install for all users, requires admin rights
 Install-Module QlikNPrinting-CLI
